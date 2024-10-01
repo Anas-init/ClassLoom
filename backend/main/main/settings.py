@@ -44,12 +44,15 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt',
     'home',
     'rest_framework',
+    'rest_framework.authtoken',
+    'corsheaders',
     'rest_framework_simplejwt.token_blacklist',
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -88,7 +91,7 @@ DATABASES = {
     }
 }
 
-
+AUTH_USER_MODEL='home.MyUser'
 # Password validation
 # https://docs.djangoproject.com/en/5.0/ref/settings/#auth-password-validators
 
