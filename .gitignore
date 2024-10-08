@@ -1,2 +1,4 @@
 env/
 node_modules/
+backend/main/main/__pycache__
+backend/main/home/__pycache__
