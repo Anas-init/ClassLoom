@@ -1,4 +1,6 @@
 import React, {useState} from 'react';
+import { TextField, Button, Typography, Paper } from '@mui/material';
+
 
 const Register = () => {
     const [username, setUsername] = useState('');
@@ -37,28 +39,58 @@ const Register = () => {
     };
 
     return (
-        <form onSubmit={handleSubmit}>
-            <input 
-                type="text"
-                value={username}
-                onChange={(event) => setUsername(event.target.value)}
-                placeholder="Username"
+        <div className="flex items-center justify-center min-h-screen bg-gray-900">
+        <Paper elevation={3} className="p-8 rounded-md shadow-lg max-w-md w-full">
+          <Typography variant="h5" className="mb-6 text-center text-white">
+            Create an Account
+          </Typography>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <TextField
+              label="Email"
+              variant="outlined"
+              fullWidth
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              InputLabelProps={{
+                style: { color: 'rgba(255, 255, 255, 0.7)' },
+              }}
             />
-            <input 
-                type="email"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                placeholder="Email"
+            <TextField
+              label="Username"
+              variant="outlined"
+              fullWidth
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              required
+              InputLabelProps={{
+                style: { color: 'rgba(255, 255, 255, 0.7)' },
+              }}
             />
-            <input 
-                type="password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                placeholder="Password"
+            <TextField
+              label="Password"
+              type="password"
+              variant="outlined"
+              fullWidth
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              InputLabelProps={{
+                style: { color: 'rgba(255, 255, 255, 0.7)' },
+              }}
             />
-            <button type="submit">Register</button>
-            {error && <p style={{color: 'red'}}>{error}</p>}
-        </form>
+            <Button
+              type="submit"
+              variant="contained"
+              color="primary"
+              fullWidth
+              className="mt-4"
+            >
+              Register
+            </Button>
+          </form>
+        </Paper>
+      </div>
     );
 };
 
