@@ -14,12 +14,12 @@ const Login = () => {
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-900">
-    <Paper elevation={3} className="p-8 rounded-md shadow-lg max-w-md w-full">
+      <Paper elevation={3} className="p-8 rounded-md shadow-lg max-w-md w-full">
         <Typography variant="h5" className="mb-6 text-center text-white">
-        Login to Your Account
+          Login to Your Account
         </Typography>
         <form onSubmit={handleSubmit} className="space-y-4">
-        <TextField
+          <TextField
             label="Email"
             variant="outlined"
             fullWidth
@@ -27,10 +27,10 @@ const Login = () => {
             onChange={(e) => setEmail(e.target.value)}
             required
             InputLabelProps={{
-            style: { color: 'rgba(255, 255, 255, 0.7)' },
+              style: { color: 'rgba(255, 255, 255, 0.7)' },
             }}
-        />
-        <TextField
+          />
+          <TextField
             label="Password"
             type="password"
             variant="outlined"
@@ -39,20 +39,20 @@ const Login = () => {
             onChange={(e) => setPassword(e.target.value)}
             required
             InputLabelProps={{
-            style: { color: 'rgba(255, 255, 255, 0.7)' },
+              style: { color: 'rgba(255, 255, 255, 0.7)' },
             }}
-        />
-        <Button
+          />
+          <Button
             type="submit"
             variant="contained"
             color="primary"
             fullWidth
             className="mt-4"
-        >
+          >
             Login
-        </Button>
+          </Button>
         </form>
-    </Paper>
+      </Paper>
     </div>
   );
 };

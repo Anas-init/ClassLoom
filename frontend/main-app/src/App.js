@@ -1,13 +1,16 @@
 import React from 'react';
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 
+import { ThemeProvider } from '@emotion/react';
+import darkTheme from './theme';
+import './index.css'
+
 import Register from './components/Register';
 import Login from './components/Login';
 import Navbar from './components/Navbar';
-import './index.css'
+import Home from './components/Home';
+import Sidebar from './components/Sidebar';
 
-import { ThemeProvider } from '@emotion/react';
-import darkTheme from './theme';
 
 // React Browser Router
 
@@ -17,9 +20,11 @@ function App() {
       <ThemeProvider theme={darkTheme}>
         <div className="App">
           <Navbar />
+          <Sidebar />
           <Routes>
             <Route path="/register" element={<Register />} />
             <Route path="/login" element={<Login />} />
+            <Route path="/home" element={<Home />} />
           </Routes>
         </div>
       </ThemeProvider>
