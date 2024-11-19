@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from home.models import MyUser
+from home.models import MyUser,ClassCard,Assignment,Comment,AssignmentSubmission,Enrollment,Announcement
 from django.utils.encoding import smart_str, force_bytes, DjangoUnicodeDecodeError
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
@@ -7,18 +7,19 @@ import os
 
     
 class UserRegisterSerializer(serializers.ModelSerializer):
-  password2 = serializers.CharField(style={'input_type':'password'}, write_only=True)
+  confirm_password= serializers.CharField(style={'input_type':'password'}, write_only=True)
   class Meta:
     model = MyUser
-    fields=['email', 'name', 'password', 'password2','is_admin']
+    fields=['email', 'name', 'password', 'confirm_password','is_admin']
     extra_kwargs={
       'password':{'write_only':True}
     }
+    
 
   def validate(self, attrs):
     password = attrs.get('password')
-    password2 = attrs.get('password2')
-    if password != password2:
+    confirm_password = attrs.get('confirm_password')
+    if password != confirm_password:
       raise serializers.ValidationError("Passwords doesn't match")
     return attrs
 
@@ -28,3 +29,46 @@ class UserRegisterSerializer(serializers.ModelSerializer):
     if MyUser.objects.filter(email=validated_data.get('email')).exists():
       raise serializers.ValidationError("Email already exists")
     return MyUser.objects.create_user(**validated_data)
+  
+class UserChangePasswordSerializer(serializers.Serializer):
+  password=serializers.CharField(style={'input_type':'password'}, write_only=True)
+  confirm_password=serializers.CharField(style={'input_type':'password'}, write_only=True)
+  class Meta:
+    fields=['password', 'confirm_password']   
+  def validate(self, attrs):
+    password=attrs.get('password')
+    confirm_password=attrs.get('confirm_password')
+    user=self.context.get('user')
+    if user.check_password(password):
+          user.set_password(confirm_password)
+          user.save()
+          return attrs
+    raise serializers.ValidationError ("Incorrect old password")
+  
+class UserLoginSerializer(serializers.ModelSerializer):
+  email=serializers.EmailField(max_length=255)
+  class Meta:
+    model=MyUser
+    fields=['email', 'password']
+
+class ClassCardSerializer(serializers.ModelSerializer):
+  class Meta:
+    model=ClassCard
+    fields='__all__'
+  def create(self,validated_data):
+    req_class_code=validated_data.get('class_code')
+    if ClassCard.objects.filter(class_code=req_class_code).exists():
+      raise serializers.ValidationError("Class card with this code already exists")
+    return ClassCard.objects.create(**validated_data)    
+  def update(self, instance, validated_data):
+    new_class_name= validated_data.get('class_name')
+    new_class_code= validated_data.get('class_code')
+    instance.class_name=new_class_name if new_class_name else instance.class_name 
+    instance.class_code =new_class_code if new_class_code else instance.class_code 
+    instance.save()
+    return instance
+class ClassCardRetrieveSerializer(serializers.ModelSerializer):
+  class Meta:
+    model=ClassCard
+    fields=['class_name','creator'];
+    
