@@ -158,8 +158,8 @@ class EnrollmentsView(APIView):
         if class_id is not None and ClassCard.objects.filter(id=class_id).exists():
             try:
                 query = """
-                SELECT u.name AS student_name, u.email AS student_email, 
-                    creator.name AS creator_name, creator.email AS creator_email
+                SELECT u.id as student_id ,u.name AS student_name, u.email AS student_email, 
+                    creator.id as teacher_id ,creator.name AS creator_name, creator.email AS creator_email
                 FROM home_myuser u 
                 INNER JOIN home_enrollment e ON u.id = e.user_id
                 INNER JOIN home_classcard c ON e.class_card_id = c.id
@@ -172,16 +172,18 @@ class EnrollmentsView(APIView):
 
                 if rows:
                     creator_info = {
-                        'creator_name': rows[0][2],
-                        'creator_email': rows[0][3]
+                        'creator_id':rows[0][3],
+                        'creator_name': rows[0][4],
+                        'creator_email': rows[0][5]
                     }
                 else:
                     creator_info = {}
                     
                 students = [
                     {
-                        'student_name': row[0],
-                        'student_email': row[1],
+                        'student_id':row[0],
+                        'student_name': row[1],
+                        'student_email': row[2],
                     }
                     for row in rows
                 ]
