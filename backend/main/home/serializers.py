@@ -52,14 +52,17 @@ class UserLoginSerializer(serializers.ModelSerializer):
     fields=['email', 'password']
 
 class ClassCardSerializer(serializers.ModelSerializer):
+  
   class Meta:
-    model=ClassCard
-    fields='__all__'
-  def create(self,validated_data):
-    req_class_code=validated_data.get('class_code')
-    if ClassCard.objects.filter(class_code=req_class_code).exists():
-      raise serializers.ValidationError("Class card with this code already exists")
-    return ClassCard.objects.create(**validated_data)    
+      model = ClassCard
+      fields = ['class_name', 'class_code']  
+  def create(self, validated_data):
+      validated_data['creator'] = self.context['request'].user  
+      req_class_code = validated_data.get('class_code')
+      if ClassCard.objects.filter(class_code=req_class_code).exists():
+          raise serializers.ValidationError("Class card with this code already exists")
+      return ClassCard.objects.create(**validated_data)
+    
   def update(self, instance, validated_data):
     new_class_name= validated_data.get('class_name')
     new_class_code= validated_data.get('class_code')
@@ -70,5 +73,11 @@ class ClassCardSerializer(serializers.ModelSerializer):
 class ClassCardRetrieveSerializer(serializers.ModelSerializer):
   class Meta:
     model=ClassCard
-    fields=['class_name','creator'];
+    fields=['id','class_name','creator']
+class EnrollmentSerializer(serializers.ModelSerializer):
+  class Meta:
+    model=Enrollment
+    fields='__all__'
+  def create(self, validated_data):
+    return Enrollment.objects.create(** validated_data )
     
