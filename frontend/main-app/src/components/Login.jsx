@@ -1,112 +1,165 @@
 import React, { useState } from 'react';
+import axios from 'axios';
 import {
-  Button,
   TextField,
+  Button,
   Typography,
-  Container,
+  CssBaseline,
+  styled,
+  Stack,
   Box,
-  Grid,
+  FormControl,
+  FormLabel,
   Divider,
-  Link,
 } from '@mui/material';
-import { Google as GoogleIcon } from '@mui/icons-material';
+import MuiCard from '@mui/material/Card';
+
+// Picked template from https://github.com/mui/material-ui/blob/v6.1.8/docs/data/material/getting-started/templates/sign-up/SignUp.js
+const Card = styled(MuiCard)(({ theme }) => ({
+  display: 'flex',
+  flexDirection: 'column',
+  alignSelf: 'center',
+  width: '100%',
+  padding: theme.spacing(4),
+  gap: theme.spacing(2),
+  margin: 'auto',
+  boxShadow:
+    'hsla(220, 30%, 5%, 0.05) 0px 5px 15px 0px, hsla(220, 25%, 10%, 0.05) 0px 15px 35px -5px',
+  [theme.breakpoints.up('sm')]: {
+    width: '450px',
+  },
+  ...theme.applyStyles('dark', {
+    boxShadow:
+      'hsla(220, 30%, 5%, 0.5) 0px 5px 15px 0px, hsla(220, 25%, 10%, 0.08) 0px 15px 35px -5px',
+  }),
+}));
+
+const SignInContainer = styled(Stack)(({ theme }) => ({
+  height: 'calc((1 - var(--template-frame-height, 0)) * 100dvh)',
+  minHeight: '100%',
+  padding: theme.spacing(2),
+  [theme.breakpoints.up('sm')]: {
+    padding: theme.spacing(4),
+  },
+  '&::before': {
+    content: '""',
+    display: 'block',
+    position: 'absolute',
+    zIndex: -1,
+    inset: 0,
+    backgroundImage:
+      'radial-gradient(ellipse at 50% 50%, hsl(210, 100%, 97%), hsl(0, 0%, 100%))',
+    backgroundRepeat: 'no-repeat',
+    ...theme.applyStyles('dark', {
+      backgroundImage:
+        'radial-gradient(at 50% 50%, hsla(210, 100%, 16%, 0.5), hsl(220, 30%, 5%))',
+    }),
+  },
+}));
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState(false);
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    // Handle login logic
-    console.log({ email, password });
+  const validateInputs = () => {
+    let isValid = true;
+
+    if (!email || !/\S+@\S+\.\S+/.test(email)) {
+      setError('Please enter a valid email address.');
+      isValid = false;
+    } else if (password.length < 6) {
+      setError('Password must be at least 6 characters long.');
+      isValid = false;
+    } else {
+      setError('');
+    }
+
+    return isValid;
+  };
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    if (!validateInputs()) return;
+
+    try {
+      // Uncomment and update the URL when API is ready
+      // const response = await axios.post('http://localhost:8000/login/', {
+      //   email,
+      //   password,
+      // });
+
+      // const token = response.data.token;
+      // localStorage.setItem('authToken', token);
+      setSuccess(true);
+      console.log('Form Data:', { email, password });
+    } catch (err) {
+      setError(err.response?.data?.detail || 'An error occurred.');
+    }
   };
 
   return (
-    <Grid container component="main" sx={{ height: '100vh' }}>
-      {/* Left Side */}
-      <Grid
-        item
-        xs={false}
-        sm={4}
-        md={7}
-        sx={{
-          backgroundImage: 'url(https://source.unsplash.com/random?books)',
-          backgroundRepeat: 'no-repeat',
-          backgroundColor: (t) =>
-            t.palette.mode === 'light' ? t.palette.grey[50] : t.palette.grey[900],
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-        }}
-      />
-      {/* Right Side */}
-      <Grid item xs={12} sm={8} md={5} component={Box} elevation={6} square>
-        <Container component="main" maxWidth="xs">
-          <Box
-            sx={{
-              marginTop: 8,
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-            }}
+    <div
+      className="flex items-center justify-center min-h-screen bg-gradient-to-r from-gray-800 via-gray-900 to-black"
+      style={{
+        background: 'radial-gradient(circle at top, #121212, #000000)',
+      }}
+    >
+      <CssBaseline enableColorScheme />
+      <SignInContainer direction="column" justifyContent="space-between">
+        <Card variant="outlined">
+          <Typography
+            component="h1"
+            variant="h4"
+            sx={{ width: '100%', fontSize: 'clamp(2rem, 10vw, 2.15rem)' }}
           >
-            <img src="/path-to-your-logo.png" alt="Google Classroom" style={{ marginBottom: '1rem' }} />
-            <Typography component="h1" variant="h5">
-              Login to Your Account
+            Sign In
+          </Typography>
+          {error && (
+            <Typography color="error" variant="body2">
+              {error}
             </Typography>
-            {/* Login Form */}
-            <Box component="form" noValidate onSubmit={handleSubmit} sx={{ mt: 1 }}>
+          )}
+          {success && (
+            <Typography color="success" variant="body2">
+              Login successful!
+            </Typography>
+          )}
+          <Box
+            component="form"
+            onSubmit={handleSubmit}
+            sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}
+          >
+            <FormControl>
+              <FormLabel htmlFor="email">Email</FormLabel>
               <TextField
-                margin="normal"
-                required
-                fullWidth
                 id="email"
-                label="Email"
-                name="email"
-                autoComplete="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-              />
-              <TextField
-                margin="normal"
+                placeholder="your@email.com"
                 required
-                fullWidth
-                name="password"
-                label="Password"
-                type="password"
+              />
+            </FormControl>
+            <FormControl>
+              <FormLabel htmlFor="password">Password</FormLabel>
+              <TextField
                 id="password"
-                autoComplete="current-password"
+                type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••"
+                required
               />
-              <Button
-                type="submit"
-                fullWidth
-                variant="contained"
-                sx={{ mt: 3, mb: 2 }}
-              >
-                Login
-              </Button>
-              <Divider sx={{ my: 2 }}>OR</Divider>
-              <Button
-                fullWidth
-                variant="outlined"
-                startIcon={<GoogleIcon />}
-                sx={{ mb: 2 }}
-              >
-                Sign in with Google
-              </Button>
-              <Grid container justifyContent="center">
-                <Grid item>
-                  <Link href="#" variant="body2">
-                    Don't have an account? Sign Up
-                  </Link>
-                </Grid>
-              </Grid>
-            </Box>
+            </FormControl>
+            <Divider />
+            <Button type="submit" fullWidth variant="contained">
+              Sign In
+            </Button>
           </Box>
-        </Container>
-      </Grid>
-    </Grid>
+        </Card>
+      </SignInContainer>
+    </div>
   );
 };
 
