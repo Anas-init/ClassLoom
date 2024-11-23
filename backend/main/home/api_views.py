@@ -5,11 +5,12 @@ from rest_framework.views import APIView
 from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
 from home.renderers import BaseRenderer
-from .serializers import UserRegisterSerializer, UserLoginSerializer,ClassCardSerializer,ClassCardRetrieveSerializer,EnrollmentSerializer,AnnouncementSerializer
+from .serializers import UserRegisterSerializer, UserLoginSerializer,ClassCardSerializer,LectureSerializer,ClassCardRetrieveSerializer,EnrollmentSerializer,AnnouncementSerializer,AssignmentSerializer
 from rest_framework.permissions import IsAuthenticated
 from django.db.models import Count
 from home.models import MyUser
 from math import ceil
+import json
 from rest_framework import filters
 from django.conf import settings
 import jwt,os
@@ -18,9 +19,11 @@ from django.db import transaction
 import uuid
 from rest_framework.parsers import MultiPartParser, FormParser
 from django.db import connection
-from home.models import MyUser,ClassCard,Assignment,Comment,AssignmentSubmission,Enrollment,Announcement,Attachment
+from home.models import MyUser,ClassCard,Assignment,Comment,AssignmentSubmission,Enrollment,Announcement,Attachment,Lecture
 from django.utils.dateformat import format
 from django.utils.timezone import now
+from rest_framework.permissions import BasePermission
+
 def get_tokens_for_user(user):
     refresh = RefreshToken.for_user(user)
     refresh['role'] = user.is_admin  
@@ -28,6 +31,11 @@ def get_tokens_for_user(user):
         'refresh': str(refresh),
         'access': str(refresh.access_token),
     }
+
+class IsAdminUser(BasePermission):
+    def has_permission(self, request, view):
+        return bool(request.user and request.user.is_authenticated and getattr(request.user, 'is_admin', False))
+
 
 class GenerateAccessToken(APIView):
     def get(self, request, format=None):
@@ -93,7 +101,7 @@ class UserLoginView(APIView):
 
     
 class ClassCardView(APIView):
-    permission_classes=[IsAuthenticated]
+    permission_classes=[IsAuthenticated,IsAdminUser]
     renderer_classes=[BaseRenderer]
     def post(self ,request,format=None):
         serializer=ClassCardSerializer(data=request.data,context={'request':request})
@@ -254,6 +262,8 @@ class AnnouncementView(APIView):
                 'id': announcement.id,
                 'description': announcement.description,
                 'created_at': announcement.created_at.isoformat(),
+                'is_updated': announcement.updated_at.isoformat() if announcement.updated_at else None,
+                'is_edited':announcement.is_edited, 
                 'creator': {
                     'name': announcement.creator.name
                 },
@@ -267,12 +277,10 @@ class AnnouncementView(APIView):
             }
             for announcement in announcements
         ]
-
-        return Response({'announcements': data}, status=status.HTTP_200_OK)
+        formatted_data = json.dumps({'assignment': data}, indent=4)
+        return Response(json.loads(formatted_data), status=status.HTTP_200_OK)
     def put(self, request, format=None):
         ann_id = request.query_params.get('announcement_id')
-
-        # Ensure announcement ID is provided
         if not ann_id:
             return Response({'error': 'Announcement ID is required'}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -313,6 +321,191 @@ class AnnouncementView(APIView):
             announcement.delete()
             return Response({'msg':'Announcement deleted successfully'},status=status.HTTP_200_OK)
         except Announcement.DoesNotExist:
-            return Response({'msg': 'Announcement with that id does not exist'}, status=status.HTTP_200_OK)
+            return Response({'error': 'Announcement with that id does not exist'}, status=status.HTTP_200_OK)
+
+class AssignmentView(APIView):
+    permission_classes=[IsAuthenticated,IsAdminUser]
+    renderer_classes=[BaseRenderer]
+    parser_classes=[MultiPartParser,FormParser]
+    def post(self, request,format=None):
+        serializer=AssignmentSerializer(data=request.data)
+        attachments=request.FILES.getlist('attachments')
+        if serializer.is_valid(raise_exception=True):
+            assignment=serializer.save()
+            if attachments:
+                for file in attachments:
+                    Attachment.objects.create(file=file,assignment=assignment)
+            return Response({'msg':'Assignment created successfully'}, status=status.HTTP_200_OK)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    def get( self, request, format=None):
+        ass_id=request.query_params.get('assignment_id')
+        if not ass_id:
+            return Response({'error': 'Assignment id not provided'},status=status.HTTP_400_BAD_REQUEST)
+        if Assignment.objects.filter(id=ass_id).exists():
+            assignments=Assignment.objects.filter(id=ass_id).prefetch_related('attachments','creator')
+            data = [
+            {
+                'id': assignment.id,
+                'title':assignment.title,
+                'description': assignment.description,
+                'due_date':assignment.due_date.isoformat(),
+                'grade':assignment.grade,
+                'created_at': assignment.created_at.isoformat(),
+                'is_updated': assignment.updated_at.isoformat() if assignment.updated_at else None,
+                'is_edited':assignment.is_edited, 
+                'creator': {
+                    'name': assignment.creator.name
+                },
+                'attachments': [
+                    {
+                        'file_name': attachment.file.name,
+                        'file_url': request.build_absolute_uri(attachment.file.url),
+                    }
+                    for attachment in assignment.attachments.all()
+                ]
+            }
+                for assignment in assignments
+            ]
+            formatted_data = json.dumps({'assignment': data}, indent=4)
+            return Response(json.loads(formatted_data), status=status.HTTP_200_OK)
+        else:
+            return Response({'error': 'Assignment with that id doesnt exist'},status=status.HTTP_400_BAD_REQUEST)                     
+    def put (self,request,format=None):
+        ass_id = request.query_params.get('assignment_id')
+        if not ass_id:
+            return Response({'error': 'Assignment ID is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            assignment = Assignment.objects.get(pk=ass_id, creator=request.user)
+        except Assignment.DoesNotExist:
+            return Response({'error': 'Assignment not found or access denied'}, status=status.HTTP_404_NOT_FOUND)
+
+        data = request.data
+        new_attachments = request.FILES.getlist('attachments')  
+        remove_attachment_ids = data.getlist('remove_attachments', [])  
+        assignment.title = data.get('title',assignment.title)
+        assignment.due_date=data.get('due_date',assignment.due_date)
+        assignment.grade = data.get('grade',assignment.grade)
+        assignment.description = data.get('description', assignment.description)
+        assignment.updated_at = now()
+        assignment.is_edited = True
+        assignment.save()
+        with transaction.atomic():
+            if remove_attachment_ids:
+                attachments_to_remove = Attachment.objects.filter(
+                    id__in=remove_attachment_ids, 
+                    assignment=assignment
+                )
+                for attachment in attachments_to_remove:
+                    if attachment.file:
+                        attachment.file.delete(save=False)  
+                        attachment.delete()  
+            if new_attachments:
+                for file in new_attachments:
+                    Attachment.objects.create(file=file, assignment=assignment)
+
+        return Response({'msg': 'Assignment updated successfully'}, status=status.HTTP_200_OK)  
+    def delete(self,request,format=None):
+        ass_id=request.query_params.get('assignment_id')
+        try:
+            assignment=Assignment.objects.get(id=ass_id)
+            attachments=Attachment.objects.filter(assignment=assignment)
+            for attachment in attachments:
+                attachment.file.delete(save=False)
+            assignment.delete()
+            return Response({'msg':'Assignment deleted successfully'},status=status.HTTP_200_OK)
+        except Assignment.DoesNotExist:
+            return Response({'error': 'Assignment with that id does not exist'}, status=status.HTTP_200_OK)
+class LectureView(APIView):
+    permission_classes=[IsAuthenticated,IsAdminUser]
+    renderer_classes=[BaseRenderer]
+    parser_classes=[MultiPartParser,FormParser]
+    def post(self,request,format=None):
+        serializer=LectureSerializer(data=request.data)
+        attachments=request.FILES.getlist('attachments')
+        if serializer.is_valid(raise_exception=True):
+            lecture=serializer.save()
+            if lecture:
+                for file in attachments:
+                    Attachment.objects.create(file=file,lecture=lecture)
+            return Response({'msg':'Lecture created successfully'}, status=status.HTTP_200_OK)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    def get( self, request, format=None):
+        lec_id=request.query_params.get('lecture_id')
+        if not lec_id:
+            return Response({'error': 'Lecture id not provided'},status=status.HTTP_400_BAD_REQUEST)
+        if Lecture.objects.filter(id=lec_id).exists():
+            lectures=Lecture.objects.filter(id=lec_id).prefetch_related('attachments','creator')
+            data = [
+            {
+                'id': lecture.id,
+                'title':lecture.title,
+                'description': lecture.description,
+                'created_at': lecture.created_at.isoformat(),
+                'is_updated': lecture.updated_at.isoformat() if lecture.updated_at else None,
+                'is_edited':lecture.is_edited, 
+                'creator': {
+                    'name': lecture.creator.name
+                },
+                'attachments': [
+                    {
+                        'file_name': attachment.file.name,
+                        'file_url': request.build_absolute_uri(attachment.file.url),
+                    }
+                    for attachment in lecture.attachments.all()
+                ]
+            }
+                for lecture in lectures
+            ]
+            formatted_data = json.dumps({'Lecture': data}, indent=4)
+            return Response(json.loads(formatted_data), status=status.HTTP_200_OK)
+        else:
+            return Response({'error': 'Lecture with that id doesnt exist'},status=status.HTTP_400_BAD_REQUEST)                     
+    def put (self,request,format=None):
+        lec_id = request.query_params.get('lecture_id')
+        if not lec_id:
+            return Response({'error': 'Lecture ID is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            lecture = Lecture.objects.get(pk=lec_id, creator=request.user)
+        except Lecture.DoesNotExist:
+            return Response({'error': 'Lecture not found or access denied'}, status=status.HTTP_404_NOT_FOUND)
+
+        data = request.data
+        new_attachments = request.FILES.getlist('attachments')  
+        remove_attachment_ids = data.getlist('remove_attachments', [])  
+        lecture.title = data.get('title',lecture.title)
+        lecture.description = data.get('description', lecture.description)
+        lecture.updated_at = now()
+        lecture.is_edited = True
+        lecture.save()
+        with transaction.atomic():
+            if remove_attachment_ids:
+                attachments_to_remove = Attachment.objects.filter(
+                    id__in=remove_attachment_ids, 
+                    lecture=lecture
+                )
+                for attachment in attachments_to_remove:
+                    if attachment.file:
+                        attachment.file.delete(save=False)  
+                        attachment.delete()  
+            if new_attachments:
+                for file in new_attachments:
+                    Attachment.objects.create(file=file, lecture=lecture)
+        return Response({'msg': 'Lecture updated successfully'}, status=status.HTTP_200_OK)  
+    def delete(self,request,format=None):
+        lec_id=request.query_params.get('lecture_id')
+        try:
+            lecture=Lecture.objects.get(id=lec_id)
+            attachments=Attachment.objects.filter(lecture=lecture)
+            for attachment in attachments:
+                attachment.file.delete(save=False)
+            lecture.delete()
+            return Response({'msg':'Lecture deleted successfully'},status=status.HTTP_200_OK)
+        except Lecture.DoesNotExist:
+            return Response({'error': 'Lecture with that id does not exist'}, status=status.HTTP_200_OK)
+    
+            
         
-         

@@ -58,6 +58,7 @@ class Assignment(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     due_date = models.DateTimeField()
     class_card = models.ForeignKey(ClassCard, on_delete=models.CASCADE, related_name="assignments")
+    creator = models.ForeignKey(MyUser, on_delete=models.CASCADE, related_name="created_assignments")
     grade = models.FloatField(null=False)
     updated_at = models.DateTimeField(null=True, blank=True)  
     is_edited = models.BooleanField(default=False) 
@@ -86,6 +87,7 @@ class Lecture(models.Model):
     description=models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
     class_card = models.ForeignKey(ClassCard, on_delete=models.CASCADE, related_name="lectures")
+    creator = models.ForeignKey(MyUser, on_delete=models.CASCADE, related_name="created_lectures")
     updated_at = models.DateTimeField(null=True, blank=True) 
     is_edited = models.BooleanField(default=False) 
     
