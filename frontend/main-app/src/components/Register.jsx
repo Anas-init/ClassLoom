@@ -65,6 +65,7 @@ const Register = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [isAdmin, setIsAdmin] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
 
@@ -87,6 +88,10 @@ const Register = () => {
     return isValid;
   };
 
+  const handleCheckboxChange = (event) => {
+    setIsAdmin(event.target.checked);
+  };
+
   const handleSubmit = async (event) => {
     event.preventDefault();
     if (!validateInputs()) return;
@@ -103,7 +108,7 @@ const Register = () => {
       // const token = response.data.token;
       // localStorage.setItem('authToken', token);
       setSuccess(true);
-      console.log('Form Data:', { username, email, password, confirmPassword });
+      // console.log('Form Data:', { username, email, password, confirmPassword, isAdmin });
     } catch (err) {
       setError(err.response?.data?.detail || 'An error occurred.');
     }
@@ -184,8 +189,14 @@ const Register = () => {
               />
             </FormControl>
             <FormControlLabel
-              control={<Checkbox value="allowExtraEmails" color="primary" />}
-              label="I want to receive updates via email."
+              control={
+                <Checkbox
+                  checked={isAdmin}
+                  onChange={handleCheckboxChange}
+                  color="primary"
+                />
+              }
+              label="Are you a Teacher?"
             />
             <Divider />
             <Button type="submit" fullWidth variant="contained">
