@@ -5,7 +5,7 @@ from rest_framework.views import APIView
 from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
 from home.renderers import BaseRenderer
-from .serializers import UserRegisterSerializer, UserLoginSerializer,ClassCardSerializer,ClassCardRetrieveSerializer,EnrollmentSerializer
+from .serializers import UserRegisterSerializer, UserLoginSerializer,ClassCardSerializer,ClassCardRetrieveSerializer,EnrollmentSerializer,AnnouncementSerializer
 from rest_framework.permissions import IsAuthenticated
 from django.db.models import Count
 from home.models import MyUser
@@ -14,9 +14,13 @@ from rest_framework import filters
 from django.conf import settings
 import jwt,os
 import datetime
+from django.db import transaction
 import uuid
+from rest_framework.parsers import MultiPartParser, FormParser
 from django.db import connection
-from home.models import MyUser,ClassCard,Assignment,Comment,AssignmentSubmission,Enrollment,Announcement
+from home.models import MyUser,ClassCard,Assignment,Comment,AssignmentSubmission,Enrollment,Announcement,Attachment
+from django.utils.dateformat import format
+from django.utils.timezone import now
 def get_tokens_for_user(user):
     refresh = RefreshToken.for_user(user)
     refresh['role'] = user.is_admin  
@@ -158,14 +162,14 @@ class EnrollmentsView(APIView):
         if class_id is not None and ClassCard.objects.filter(id=class_id).exists():
             try:
                 query = """
-                SELECT u.id as student_id ,u.name AS student_name, u.email AS student_email, 
-                    creator.id as teacher_id ,creator.name AS creator_name, creator.email AS creator_email
-                FROM home_myuser u 
-                INNER JOIN home_enrollment e ON u.id = e.user_id
-                INNER JOIN home_classcard c ON e.class_card_id = c.id
-                INNER JOIN home_myuser creator ON c.creator_id = creator.id
-                WHERE c.id = %s
-                """
+                    SELECT student_user.id as student_id, student_user.name AS student_name, student_user.email AS student_email, 
+                    creator_user.id as teacher_id, creator_user.name AS creator_name, creator_user.email AS creator_email
+                    FROM home_classcard c
+                    INNER JOIN home_myuser creator_user ON c.creator_id = creator_user.id
+                    LEFT JOIN home_enrollment e ON c.id = e.class_card_id
+                    LEFT JOIN home_myuser student_user ON e.user_id = student_user.id
+                    WHERE c.id = %s
+                    """
                 with connection.cursor() as cursor:
                     cursor.execute(query, [class_id])
                     rows = cursor.fetchall()
@@ -178,15 +182,16 @@ class EnrollmentsView(APIView):
                     }
                 else:
                     creator_info = {}
-                    
-                students = [
-                    {
-                        'student_id':row[0],
-                        'student_name': row[1],
-                        'student_email': row[2],
-                    }
-                    for row in rows
-                ]
+                students=[]
+                if rows[0][0] is not None:                  
+                    students = [
+                        {
+                            'student_id':row[0],
+                            'student_name': row[1],
+                            'student_email': row[2],
+                        }
+                        for row in rows
+                    ]
                 response_data = {
                     'creator': creator_info,
                     'students': students
@@ -198,3 +203,116 @@ class EnrollmentsView(APIView):
                 return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         else:
             return Response({'error': 'Class id not provided or Class with that id doesn\'t exist'}, status=status.HTTP_400_BAD_REQUEST)
+    def delete(self, request, format=None):  # only teachers can remove students
+        ids = request.data.get('ids')  
+        class_id = request.data.get('class_id')
+        if not ids or not isinstance(ids, list):
+            return Response({'error': 'Invalid data, array of IDs is required'}, status=status.HTTP_400_BAD_REQUEST)
+        if not class_id or not ClassCard.objects.filter(id=class_id).exists():
+            return Response({'error': 'Class ID is invalid or does not exist'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            placeholders = ', '.join(['%s'] * len(ids))
+            query = f"""
+                DELETE FROM home_enrollment 
+                WHERE user_id IN ({placeholders}) AND class_card_id = %s
+            """
+            params = ids + [class_id]
+            
+            with connection.cursor() as cursor:
+                cursor.execute(query, params)
+
+            return Response({'msg': 'Records deleted successfully'}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+class AnnouncementView(APIView):
+    renderer_classes = [BaseRenderer]
+    permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]
+
+    def post(self, request, format=None):
+        data = request.data
+        attachments = request.FILES.getlist('attachments')  
+        serializer = AnnouncementSerializer(data=data)
+        if serializer.is_valid(raise_exception=True):
+            announcement = serializer.save()
+            if attachments:
+                for file in attachments:
+                    Attachment.objects.create(file=file, announcement=announcement)
+            return Response({'msg': 'Announcement created successfully'}, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    def get(self, request, format=None):
+        class_id = request.query_params.get('class_id')
+        if not class_id:
+            return Response({'error': 'class_id is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if not ClassCard.objects.filter(id=class_id).exists():
+            return Response({'error': 'Class with the provided id does not exist'}, status=status.HTTP_404_NOT_FOUND)
+        announcements = Announcement.objects.filter(class_card_id=class_id).prefetch_related('attachments', 'creator')
+        data = [
+            {
+                'id': announcement.id,
+                'description': announcement.description,
+                'created_at': announcement.created_at.isoformat(),
+                'creator': {
+                    'name': announcement.creator.name
+                },
+                'attachments': [
+                    {
+                        'file_name': attachment.file.name,
+                        'file_url': request.build_absolute_uri(attachment.file.url),
+                    }
+                    for attachment in announcement.attachments.all()
+                ]
+            }
+            for announcement in announcements
+        ]
+
+        return Response({'announcements': data}, status=status.HTTP_200_OK)
+    def put(self, request, format=None):
+        ann_id = request.query_params.get('announcement_id')
+
+        # Ensure announcement ID is provided
+        if not ann_id:
+            return Response({'error': 'Announcement ID is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            announcement = Announcement.objects.get(pk=ann_id, creator=request.user)
+        except Announcement.DoesNotExist:
+            return Response({'error': 'Announcement not found or access denied'}, status=status.HTTP_404_NOT_FOUND)
+
+        data = request.data
+        new_attachments = request.FILES.getlist('attachments')  
+        remove_attachment_ids = data.getlist('remove_attachments', [])  
+        announcement.description = data.get('description', announcement.description)
+        announcement.updated_at = now()
+        announcement.is_edited = True
+        announcement.save()
+        with transaction.atomic():
+            if remove_attachment_ids:
+                attachments_to_remove = Attachment.objects.filter(
+                    id__in=remove_attachment_ids, 
+                    announcement=announcement
+                )
+                for attachment in attachments_to_remove:
+                    if attachment.file:
+                        attachment.file.delete(save=False)  
+                        attachment.delete()  
+            if new_attachments:
+                for file in new_attachments:
+                    Attachment.objects.create(file=file, announcement=announcement)
+
+        return Response({'msg': 'Announcement updated successfully'}, status=status.HTTP_200_OK)  
+    def delete(self, request,format=None):
+        ann_id=request.query_params.get('announcement_id')
+        try:
+            announcement=Announcement.objects.get(id=ann_id)
+            attachments=Attachment.objects.filter(announcement=announcement)
+            for attachment in attachments:
+                attachment.file.delete(save=False)
+            announcement.delete()
+            return Response({'msg':'Announcement deleted successfully'},status=status.HTTP_200_OK)
+        except Announcement.DoesNotExist:
+            return Response({'msg': 'Announcement with that id does not exist'}, status=status.HTTP_200_OK)
+        
+         
