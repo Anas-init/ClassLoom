@@ -58,18 +58,16 @@ class Assignment(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     due_date = models.DateTimeField()
     class_card = models.ForeignKey(ClassCard, on_delete=models.CASCADE, related_name="assignments")
-    creator = models.ForeignKey(MyUser, on_delete=models.CASCADE, related_name="created_assignments")
-
+    grade = models.FloatField(null=False)
+    updated_at = models.DateTimeField(null=True, blank=True)  
+    is_edited = models.BooleanField(default=False) 
     def __str__(self):
         return f"{self.title} - {self.class_card.class_name}"
 
 class AssignmentSubmission(models.Model):
     assignment = models.ForeignKey(Assignment, on_delete=models.CASCADE, related_name="submissions")
     student = models.ForeignKey(MyUser, on_delete=models.CASCADE, related_name="submissions")
-    file = models.FileField(upload_to="submissions/")
     submitted_at = models.DateTimeField(auto_now_add=True)
-    grade = models.FloatField(null=True, blank=True)
-    feedback = models.TextField(null=True, blank=True)
 
     class Meta:
         unique_together = ("assignment", "student")
@@ -77,29 +75,54 @@ class AssignmentSubmission(models.Model):
     def __str__(self):
         return f"{self.student.name} - {self.assignment.title}"
 
+class AssignmentResult(models.Model):
+    assignmentsubmission=models.OneToOneField(AssignmentSubmission,on_delete=models.CASCADE, related_name="result")
+    result_grade=models.FloatField(null=False)
+    feedback = models.TextField(null=True, blank=True)
 
-class Announcement(models.Model):
+
+class Lecture(models.Model):
     title = models.CharField(max_length=255)
-    content = models.TextField()
+    description=models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    class_card = models.ForeignKey(ClassCard, on_delete=models.CASCADE, related_name="lectures")
+    updated_at = models.DateTimeField(null=True, blank=True) 
+    is_edited = models.BooleanField(default=False) 
+    
+class Announcement(models.Model):
+    description = models.TextField()
     class_card = models.ForeignKey(ClassCard, on_delete=models.CASCADE, related_name="announcements")
     creator = models.ForeignKey(MyUser, on_delete=models.CASCADE, related_name="created_announcements")
     created_at = models.DateTimeField(auto_now_add=True)
-    attachment = models.FileField(upload_to="announcements/", null=True, blank=True) 
+    updated_at = models.DateTimeField(null=True, blank=True)  
+    is_edited = models.BooleanField(default=False) 
     def __str__(self):
-        return f"Announcement: {self.title} - {self.class_card.class_name}"
+        return f"Announcement: {self.description} - {self.class_card.class_name}"
+    
 
 
 class Comment(models.Model):
     user = models.ForeignKey(MyUser, on_delete=models.CASCADE, related_name="comments")
-    content = models.TextField(null=False)
+    description = models.TextField(null=False)
     created_at = models.DateTimeField(auto_now_add=True)
     assignment = models.ForeignKey(Assignment, on_delete=models.CASCADE, null=True, blank=True, related_name="comments")
     announcement = models.ForeignKey(Announcement, on_delete=models.CASCADE, null=True, blank=True, related_name="comments")
-
+    lecture = models.ForeignKey(Lecture, on_delete=models.CASCADE, null=True, blank=True, related_name="comments")
+    
     def __str__(self):
         if self.assignment:
             return f"Comment by {self.user.name} on Assignment {self.assignment.title}"
 
         if self.announcement:
-            return f"Comment by {self.user.name} on Announcement {self.announcement.title}"
+            return f"Comment by {self.user.name} on Announcement {self.announcement.description}"
         return f"Comment by {self.user.name}"
+class Attachment(models.Model):
+    file = models.FileField(upload_to="attachments/")
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+    assignment = models.ForeignKey(Assignment, on_delete=models.CASCADE, null=True, blank=True, related_name="attachments")
+    announcement = models.ForeignKey(Announcement, on_delete=models.CASCADE, null=True, blank=True, related_name="attachments")
+    submission = models.ForeignKey(AssignmentSubmission, on_delete=models.CASCADE, null=True, blank=True, related_name="attachments")
+    lecture = models.ForeignKey(Lecture, on_delete=models.CASCADE,null=True, blank=True, related_name="attachments")
+    
+    def __str__(self):
+        return f"Attachment: {self.file.name}"
