@@ -1,10 +1,11 @@
 import React from 'react';
 import { PageContainer } from '@toolpad/core/PageContainer';
+import ClassCard from './ClassCard';
 
-const Home = () => {
+const Home = ({ classes }) => {
   return (
-    <PageContainer>
-        <h1>Hello World</h1>
+    <PageContainer sx={{ width: "100%", padding: "20px"}}>
+        <ClassCard classes={ classes } />
     </PageContainer>
   );
 };

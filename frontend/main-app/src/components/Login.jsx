@@ -84,16 +84,13 @@ const Login = () => {
     if (!validateInputs()) return;
 
     try {
-      // Uncomment and update the URL when API is ready
-      // const response = await axios.post('http://localhost:8000/login/', {
-      //   email,
-      //   password,
-      // });
-
-      // const token = response.data.token;
-      // localStorage.setItem('authToken', token);
+      const response = await axios.post('http://127.0.0.1:8000/api/login/', {
+        email: email,
+        password: password,
+      });
+      const token = response.data.token;
+      localStorage.setItem('authToken', token);
       setSuccess(true);
-      console.log('Form Data:', { email, password });
     } catch (err) {
       setError(err.response?.data?.detail || 'An error occurred.');
     }

@@ -1,9 +1,12 @@
 // Base imports
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import { createTheme } from '@mui/material/styles';
 import { AppProvider } from '@toolpad/core/AppProvider';
 import { DashboardLayout } from '@toolpad/core/DashboardLayout';
+import { Chip } from '@mui/material';
 
 // Icons
 import ClassIcon from '@mui/icons-material/Class';
@@ -15,11 +18,14 @@ import HomeIcon from '@mui/icons-material/Home';
 import Home from './components/Home';
 import Login from './components/Login';
 import Register from './components/Register';
+import { stringToMuiColor } from './components/stringToMuiColor';
 
 // Navigation items
-const NAVIGATION = [
+var NAVIGATION = [
   { segment: '', title: 'Home', icon: <HomeIcon /> },
-  { segment: 'assignments', title: 'Assignments', icon: <AssignmentIcon /> },
+  { segment: 'assignments', title: 'Assignments', icon: <AssignmentIcon />, 
+    // action: <Chip label={7} color="error" size="small" /> 
+  },
   { kind: 'divider' },
   { segment: 'classes', title: 'Classes', icon: <ClassIcon />, 
     pattern: 'classes{/:classId}*', 
@@ -75,6 +81,34 @@ function App() {
     };
   }, []);
 
+  const [classes, setClasses] = useState([]); // State to store classes
+
+  useEffect(() => {
+    // Simulate async data fetching
+    const fetchData = async () => {
+      const data = [
+        { class_id: 1, class_name: "Mathematics 101", creator: "Dr. Alice" },
+        { class_id: 2, class_name: "Physics 202", creator: "Prof. Bob" },
+        { class_id: 3, class_name: "History 303", creator: "Dr. Carol" },
+      ];
+
+      // const data = await axios.post('http://127.0.0.1:8000/api/classes/');
+
+      setClasses(data);
+    };
+    fetchData();
+  }, []);
+
+  NAVIGATION = NAVIGATION.map((item) => {
+    if (item.segment === 'classes') {
+      item.children = classes.map((classItem) => ({
+        title: classItem.class_name,
+        segment: `classes/${classItem.class_id}`,
+        icon: <ClassIcon sx={{ color: stringToMuiColor(classItem.class_name) + " !important" }} />
+      }));
+    }
+    return item;
+  });
 
   return (
       <Router>
@@ -98,7 +132,7 @@ function App() {
             element={
               <DashboardLayout>
                 <Routes>
-                  <Route path="/" element={<Home />} />
+                  <Route path="/" element={<Home classes={ classes } />} />
                   <Route path="/assignments" element={<div>Assignments Page</div>} />
                   <Route path="/settings" element={<div>Settings Page</div>} />
                 </Routes>

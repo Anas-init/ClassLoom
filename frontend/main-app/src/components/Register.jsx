@@ -97,18 +97,16 @@ const Register = () => {
     if (!validateInputs()) return;
 
     try {
-      // Uncomment and update the URL when API is ready
-      // const response = await axios.post('http://localhost:8000/register/', {
-      //   name: username,
-      //   email,
-      //   password,
-      //   confirm_password: confirmPassword,
-      // });
-
-      // const token = response.data.token;
-      // localStorage.setItem('authToken', token);
+      const response = await axios.post('http://127.0.0.1:8000/api/register/', {
+        name: username,
+        email: email,
+        password: password,
+        confirm_password: confirmPassword,
+        is_admin: isAdmin
+      });
+      const token = response.data.token;
+      localStorage.setItem('authToken', token);
       setSuccess(true);
-      // console.log('Form Data:', { username, email, password, confirmPassword, isAdmin });
     } catch (err) {
       setError(err.response?.data?.detail || 'An error occurred.');
     }

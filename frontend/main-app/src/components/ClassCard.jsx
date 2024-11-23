@@ -1,10 +1,36 @@
-import React from 'react';
+import * as React from 'react';
+import Card from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
+import Typography from '@mui/material/Typography';
+import { stringToMuiColor } from './stringToMuiColor';
 
-const ClassCard = () => {
+export default function ClassCard({ classes }) {
   return (
-    <>
-    </>
+    <div style={{ display: "flex", gap: "16px", flexWrap: "wrap" }}>
+      {classes.map((classItem) => (
+        <Card key={classItem.class_id} sx={{
+          width: { xs: '100%', sm: 250 },
+          height: 200,
+          border: "3px solid",
+          borderColor: stringToMuiColor(classItem.class_name),
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "space-between",
+        }}>
+          <CardContent
+            sx={{
+              backgroundColor: stringToMuiColor(classItem.class_name),
+            }}
+          >
+            <Typography gutterBottom variant="h5" component="div">
+              {classItem.class_name}
+            </Typography>
+            <Typography variant="body2" sx={{ color: "text.secondary" }}>
+              Created by: {classItem.creator}
+            </Typography>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
   );
-};
-
-export default ClassCard;
+}
