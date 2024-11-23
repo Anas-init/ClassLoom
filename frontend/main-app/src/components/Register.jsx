@@ -6,7 +6,8 @@ const Register = () => {
     const [username, setUsername] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword]  = useState('');
-    const [error, setError] = useState(null);
+    // eslint-disable-next-line no-unused-vars
+    const [myerror, setmyError] = useState(null);
 
     // Change to axios
     const handleSubmit = async (event) => {
@@ -33,8 +34,8 @@ const Register = () => {
             */
 
             console.log(data);
-        } catch (error) {
-            setError(error.message);
+        } catch (myerror) {
+            setmyError(myerror.message);
         }
     };
 

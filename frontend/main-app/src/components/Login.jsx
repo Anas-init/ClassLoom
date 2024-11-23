@@ -1,6 +1,15 @@
 import React, { useState } from 'react';
-import { TextField, Button, Typography, Paper } from '@mui/material';
-
+import {
+  Button,
+  TextField,
+  Typography,
+  Container,
+  Box,
+  Grid,
+  Divider,
+  Link,
+} from '@mui/material';
+import { Google as GoogleIcon } from '@mui/icons-material';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -13,47 +22,91 @@ const Login = () => {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-900">
-    <Paper elevation={3} className="p-8 rounded-md shadow-lg max-w-md w-full">
-        <Typography variant="h5" className="mb-6 text-center text-white">
-        Login to Your Account
-        </Typography>
-        <form onSubmit={handleSubmit} className="space-y-4">
-        <TextField
-            label="Email"
-            variant="outlined"
-            fullWidth
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            InputLabelProps={{
-            style: { color: 'rgba(255, 255, 255, 0.7)' },
+    <Grid container component="main" sx={{ height: '100vh' }}>
+      {/* Left Side */}
+      <Grid
+        item
+        xs={false}
+        sm={4}
+        md={7}
+        sx={{
+          backgroundImage: 'url(https://source.unsplash.com/random?books)',
+          backgroundRepeat: 'no-repeat',
+          backgroundColor: (t) =>
+            t.palette.mode === 'light' ? t.palette.grey[50] : t.palette.grey[900],
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+        }}
+      />
+      {/* Right Side */}
+      <Grid item xs={12} sm={8} md={5} component={Box} elevation={6} square>
+        <Container component="main" maxWidth="xs">
+          <Box
+            sx={{
+              marginTop: 8,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
             }}
-        />
-        <TextField
-            label="Password"
-            type="password"
-            variant="outlined"
-            fullWidth
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            InputLabelProps={{
-            style: { color: 'rgba(255, 255, 255, 0.7)' },
-            }}
-        />
-        <Button
-            type="submit"
-            variant="contained"
-            color="primary"
-            fullWidth
-            className="mt-4"
-        >
-            Login
-        </Button>
-        </form>
-    </Paper>
-    </div>
+          >
+            <img src="/path-to-your-logo.png" alt="Google Classroom" style={{ marginBottom: '1rem' }} />
+            <Typography component="h1" variant="h5">
+              Login to Your Account
+            </Typography>
+            {/* Login Form */}
+            <Box component="form" noValidate onSubmit={handleSubmit} sx={{ mt: 1 }}>
+              <TextField
+                margin="normal"
+                required
+                fullWidth
+                id="email"
+                label="Email"
+                name="email"
+                autoComplete="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+              <TextField
+                margin="normal"
+                required
+                fullWidth
+                name="password"
+                label="Password"
+                type="password"
+                id="password"
+                autoComplete="current-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+              <Button
+                type="submit"
+                fullWidth
+                variant="contained"
+                sx={{ mt: 3, mb: 2 }}
+              >
+                Login
+              </Button>
+              <Divider sx={{ my: 2 }}>OR</Divider>
+              <Button
+                fullWidth
+                variant="outlined"
+                startIcon={<GoogleIcon />}
+                sx={{ mb: 2 }}
+              >
+                Sign in with Google
+              </Button>
+              <Grid container justifyContent="center">
+                <Grid item>
+                  <Link href="#" variant="body2">
+                    Don't have an account? Sign Up
+                  </Link>
+                </Grid>
+              </Grid>
+            </Box>
+          </Box>
+        </Container>
+      </Grid>
+    </Grid>
   );
 };
 
