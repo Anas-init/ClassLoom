@@ -1,98 +1,201 @@
-import React, {useState} from 'react';
-import { TextField, Button, Typography, Paper } from '@mui/material';
+import React, { useState } from 'react';
+import axios from 'axios';
+import {
+  TextField,
+  Button,
+  Typography,
+  CssBaseline,
+  styled,
+  Stack,
+  Box,
+  FormControl,
+  FormLabel,
+  FormControlLabel,
+  Divider,
+  Checkbox,
+} from '@mui/material';
+import MuiCard from '@mui/material/Card';
 
+
+// Picked template from https://github.com/mui/material-ui/blob/v6.1.8/docs/data/material/getting-started/templates/sign-up/SignUp.js
+const Card = styled(MuiCard)(({ theme }) => ({
+  display: 'flex',
+  flexDirection: 'column',
+  alignSelf: 'center',
+  width: '100%',
+  padding: theme.spacing(4),
+  gap: theme.spacing(2),
+  margin: 'auto',
+  boxShadow:
+    'hsla(220, 30%, 5%, 0.05) 0px 5px 15px 0px, hsla(220, 25%, 10%, 0.05) 0px 15px 35px -5px',
+  [theme.breakpoints.up('sm')]: {
+    width: '450px',
+  },
+  ...theme.applyStyles('dark', {
+    boxShadow:
+      'hsla(220, 30%, 5%, 0.5) 0px 5px 15px 0px, hsla(220, 25%, 10%, 0.08) 0px 15px 35px -5px',
+  }),
+}));
+
+const SignUpContainer = styled(Stack)(({ theme }) => ({
+  height: 'calc((1 - var(--template-frame-height, 0)) * 100dvh)',
+  minHeight: '100%',
+  padding: theme.spacing(2),
+  [theme.breakpoints.up('sm')]: {
+    padding: theme.spacing(4),
+  },
+  '&::before': {
+    content: '""',
+    display: 'block',
+    position: 'absolute',
+    zIndex: -1,
+    inset: 0,
+    backgroundImage:
+      'radial-gradient(ellipse at 50% 50%, hsl(210, 100%, 97%), hsl(0, 0%, 100%))',
+    backgroundRepeat: 'no-repeat',
+    ...theme.applyStyles('dark', {
+      backgroundImage:
+        'radial-gradient(at 50% 50%, hsla(210, 100%, 16%, 0.5), hsl(220, 30%, 5%))',
+    }),
+  },
+}));
 
 const Register = () => {
-    const [username, setUsername] = useState('');
-    const [email, setEmail] = useState('');
-    const [password, setPassword]  = useState('');
-    // eslint-disable-next-line no-unused-vars
-    const [myerror, setmyError] = useState(null);
+  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState(false);
 
-    // Change to axios
-    const handleSubmit = async (event) => {
-        event.preventDefault();
-        try {
-            // fetch implementation
-            const response = await fetch('http://localhost:8000/register/', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({username, email, password})
-            });
-            const data = await response.json();
+  const validateInputs = () => {
+    let isValid = true;
 
-            // axios implementation
-            /*
-                const response = await axios.post('http://localhost:8000/register/', {
-                    username,
-                    email,
-                    password
-                });
-                console.log(response.data);
-            */
+    if (!email || !/\S+@\S+\.\S+/.test(email)) {
+      setError('Please enter a valid email address.');
+      isValid = false;
+    } else if (password.length < 6) {
+      setError('Password must be at least 6 characters long.');
+      isValid = false;
+    } else if (password !== confirmPassword) {
+      setError("Passwords don't match!");
+      isValid = false;
+    } else {
+      setError('');
+    }
 
-            console.log(data);
-        } catch (myerror) {
-            setmyError(myerror.message);
-        }
-    };
+    return isValid;
+  };
 
-    return (
-        <div className="flex items-center justify-center min-h-screen bg-gray-900">
-        <Paper elevation={3} className="p-8 rounded-md shadow-lg max-w-md w-full">
-          <Typography variant="h5" className="mb-6 text-center text-white">
-            Create an Account
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    if (!validateInputs()) return;
+
+    try {
+      // Uncomment and update the URL when API is ready
+      // const response = await axios.post('http://localhost:8000/register/', {
+      //   name: username,
+      //   email,
+      //   password,
+      //   confirm_password: confirmPassword,
+      // });
+
+      // const token = response.data.token;
+      // localStorage.setItem('authToken', token);
+      setSuccess(true);
+      console.log('Form Data:', { username, email, password, confirmPassword });
+    } catch (err) {
+      setError(err.response?.data?.detail || 'An error occurred.');
+    }
+  };
+
+  return (
+    <div
+      className="flex items-center justify-center min-h-screen bg-gradient-to-r from-gray-800 via-gray-900 to-black"
+      style={{
+        background: 'radial-gradient(circle at top, #121212, #000000)',
+      }}
+    >
+      <CssBaseline enableColorScheme />
+      <SignUpContainer direction="column" justifyContent="space-between">
+        <Card variant="outlined">
+          <Typography
+            component="h1"
+            variant="h4"
+            sx={{ width: '100%', fontSize: 'clamp(2rem, 10vw, 2.15rem)' }}
+          >
+            Sign up
           </Typography>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <TextField
-              label="Email"
-              variant="outlined"
-              fullWidth
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              InputLabelProps={{
-                style: { color: 'rgba(255, 255, 255, 0.7)' },
-              }}
+          {error && (
+            <Typography color="error" variant="body2">
+              {error}
+            </Typography>
+          )}
+          {success && (
+            <Typography color="success" variant="body2">
+              Registration successful!
+            </Typography>
+          )}
+          <Box
+            component="form"
+            onSubmit={handleSubmit}
+            sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}
+          >
+            <FormControl>
+              <FormLabel htmlFor="username">Full Name</FormLabel>
+              <TextField
+                id="username"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder="Jon Snow"
+                required
+              />
+            </FormControl>
+            <FormControl>
+              <FormLabel htmlFor="email">Email</FormLabel>
+              <TextField
+                id="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="your@email.com"
+                required
+              />
+            </FormControl>
+            <FormControl>
+              <FormLabel htmlFor="password">Password</FormLabel>
+              <TextField
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••"
+                required
+              />
+            </FormControl>
+            <FormControl>
+              <FormLabel htmlFor="confirmPassword">Confirm Password</FormLabel>
+              <TextField
+                id="confirmPassword"
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="••••••"
+                required
+              />
+            </FormControl>
+            <FormControlLabel
+              control={<Checkbox value="allowExtraEmails" color="primary" />}
+              label="I want to receive updates via email."
             />
-            <TextField
-              label="Username"
-              variant="outlined"
-              fullWidth
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              required
-              InputLabelProps={{
-                style: { color: 'rgba(255, 255, 255, 0.7)' },
-              }}
-            />
-            <TextField
-              label="Password"
-              type="password"
-              variant="outlined"
-              fullWidth
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              InputLabelProps={{
-                style: { color: 'rgba(255, 255, 255, 0.7)' },
-              }}
-            />
-            <Button
-              type="submit"
-              variant="contained"
-              color="primary"
-              fullWidth
-              className="mt-4"
-            >
-              Register
+            <Divider />
+            <Button type="submit" fullWidth variant="contained">
+              Sign up
             </Button>
-          </form>
-        </Paper>
-      </div>
-    );
+          </Box>
+        </Card>
+      </SignUpContainer>
+    </div>
+  );
 };
 
 export default Register;
