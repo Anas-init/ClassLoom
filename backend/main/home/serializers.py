@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from home.models import MyUser,ClassCard,Assignment,Comment,AssignmentSubmission,Enrollment,Announcement
+from home.models import MyUser,ClassCard,Assignment,Comment,AssignmentSubmission,Enrollment,Announcement,Lecture
 from django.utils.encoding import smart_str, force_bytes, DjangoUnicodeDecodeError
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
@@ -87,3 +87,15 @@ class AnnouncementSerializer(serializers.ModelSerializer):
     fields='__all__'
   def create(self, validated_data):
     return Announcement.objects.create(**validated_data)
+class AssignmentSerializer(serializers.ModelSerializer):
+  class Meta:
+    model=Assignment
+    fields='__all__'
+  def create(self, validated_data):
+    return Assignment.objects.create(**validated_data)
+class LectureSerializer(serializers.ModelSerializer):
+  class Meta:
+    model=Lecture
+    fields='__all__'
+  def create(self, validated_data):
+    return Lecture.objects.create(**validated_data)

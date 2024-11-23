@@ -1,5 +1,5 @@
 from django.urls import path,include
-from .api_views import UserregistrationView,UserLoginView,ClassCardView,EnrollmentsView,GenerateAccessToken,AnnouncementView
+from .api_views import UserregistrationView,UserLoginView,ClassCardView,EnrollmentsView,GenerateAccessToken,AnnouncementView,AssignmentView,LectureView
 urlpatterns = [
     #MyUser APIs
     path('register/',UserregistrationView.as_view(),name='register'),
@@ -19,4 +19,16 @@ urlpatterns = [
     path('all-announcement/',AnnouncementView.as_view(),name='all-announcement'),
     path('update-announcement/',AnnouncementView.as_view(),name='update-announcement'),
     path('delete-announcement/',AnnouncementView.as_view(),name='delete-announcement'),
+    #Assignments APIs
+    path('create-assignment/',AssignmentView.as_view(),name='create-assignment'),
+    path('retrieve-assignment/',AssignmentView.as_view(),name='retrieve-assignment'),
+    path('update-assignment/',AssignmentView.as_view(),name='update-assignment'),
+    path('delete-assignment/',AssignmentView.as_view(),name='delete-assignment'),
+    #Lectures APIs
+    path('create-lecture/',LectureView.as_view(),name='create-lecture'),
+    path('retrieve-lecture/',LectureView.as_view(),name='retrieve-lecture'),
+    path('update-lecture/',LectureView.as_view(),name='update-lecture'),
+    path('delete-lecture/',LectureView.as_view(),name='delete-lecture'),
+    
+    
 ]
