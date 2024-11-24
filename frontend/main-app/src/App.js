@@ -1,13 +1,11 @@
-// Base imports
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import React, { useState, useEffect, useMemo } from 'react';
+// import axios from 'axios';
 import { jwtDecode } from 'jwt-decode';
 
-import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import { AppProvider } from '@toolpad/core/AppProvider';
 import { DashboardLayout } from '@toolpad/core/DashboardLayout';
-import { Chip } from '@mui/material';
-import darkTheme from './theme';
+// import { Chip } from '@mui/material';
+import { PageContainer } from '@toolpad/core/PageContainer';
 
 // Icons
 import ClassIcon from '@mui/icons-material/Class';
@@ -19,27 +17,90 @@ import HomeIcon from '@mui/icons-material/Home';
 import Home from './components/Home';
 import Login from './components/Login';
 import Register from './components/Register';
-import PrivateRoute from './components/PrivateRoute';
+import Settings from './components/Settings';
+import ClassPage from './components/ClassPage';
+import Assignments from './components/Assignments';
+
+// Styling and Helpers
+import darkTheme from './theme';
 import { stringToMuiColor } from './components/stringToMuiColor';
 
-// Navigation items
-var NAVIGATION = [
-  { segment: '', title: 'Home', icon: <HomeIcon /> },
-  { segment: 'assignments', title: 'Assignments', icon: <AssignmentIcon />, 
-    // action: <Chip label={7} color="error" size="small" /> 
-  },
-  { kind: 'divider' },
-  { segment: 'classes', title: 'Classes', icon: <ClassIcon />, 
-    pattern: 'classes{/:classId}*', 
-    children: []
-  },
-  { kind: 'divider' },
-  { segment: 'settings', title: 'Settings', icon: <SettingsIcon /> },
-];
+async function fetchNavigation() {
+  try {
+    const response = [
+      { class_id: 1, class_name: 'Mathematics 101', creator: 'Dr. Alice' },
+      { class_id: 2, class_name: 'Physics 202', creator: 'Prof. Bob' },
+      { class_id: 3, class_name: 'History 303', creator: 'Dr. Carol' },
+    ];
+    // const response = await axios.post("http://127.0.0.1:8000/api/classes/");
+    // const classes = response.data.map((classItem) => ({
+    const classes = response.map((classItem) => ({
+      title: classItem.class_name,
+      segment: `${classItem.class_id}`,
+      icon: <ClassIcon sx={{ color: stringToMuiColor(classItem.class_name) + " !important" }} />,
+    }));
 
-function App() {
+    return [
+      {
+        segment: "",
+        title: "Home",
+        icon: <HomeIcon />,
+      },
+      {
+        segment: "assignments",
+        title: "Assignments",
+        icon: <AssignmentIcon />,
+        // action: <Chip label={7} color="error" size="small" /> 
+      },
+      {
+        kind: "divider",
+      },
+      {
+        segment: "class",
+        title: "Classes",
+        icon: <ClassIcon />,
+        children: classes,
+      },
+      {
+        kind: "divider",
+      },
+      {
+        segment: "settings",
+        title: "Settings",
+        icon: <SettingsIcon />,
+      },
+    ];
+  } catch (error) {
+    console.error("Failed to fetch navigation data:", error);
+    return [
+      {
+        segment: "login",
+        title: "Please Sign In Again",
+        icon: <SettingsIcon />,
+      },
+    ];
+  }
+}
 
-  const [session, setSession] = React.useState(() => {
+function CustomRouter(initialPath) {
+  const [pathname, setPathname] = useState(initialPath);
+
+  const router = useMemo(() => {
+    return {
+      pathname,
+      searchParams: new URLSearchParams(),
+      navigate: (path) => setPathname(String(path)),
+    };
+  }, [pathname]);
+
+  return router;
+}
+
+export default function App() {
+  const router = CustomRouter('/');
+
+  // Session Management
+  const [session, setSession] = useState(() => {
     const accessToken = localStorage.getItem('accessToken');
     if (accessToken) {
       try {
@@ -52,9 +113,10 @@ function App() {
       }
     }
     return null;
-  });  
+  });
 
-  const authentication = React.useMemo(() => ({
+  // Account Display Management
+  const authentication = useMemo(() => ({
     signIn: () => {
       const accessToken = localStorage.getItem('accessToken');
       if (accessToken) {
@@ -80,87 +142,58 @@ function App() {
           localStorage.removeItem('accessToken');
           localStorage.removeItem('refreshToken');
           setSession(null);
-          return false;
         }
       }
+      return false;
     },
     signOut: () => {
       setSession(null);
       localStorage.removeItem('accessToken');
       localStorage.removeItem('refreshToken');
-    }
-  }), []);
+      router.navigate('/login');
+    },
+  }), [router]);
 
-  const [classes, setClasses] = useState([]);
-
+  const [NAVIGATION, setNavigation] = useState([]);
   useEffect(() => {
-    const fetchData = async () => {
-
-      const data = [
-        { class_id: 1, class_name: "Mathematics 101", creator: "Dr. Alice" },
-        { class_id: 2, class_name: "Physics 202", creator: "Prof. Bob" },
-        { class_id: 3, class_name: "History 303", creator: "Dr. Carol" },
-      ];
-      // const data = await axios.post('http://127.0.0.1:8000/api/classes/'); 
-      setClasses(data);
+    const initializeNavigation = async () => {
+      const navData = await fetchNavigation();
+      setNavigation(navData);
     };
 
     const initializeApp = async () => {
       if (authentication.signIn()) {
-        await fetchData();
+        await initializeNavigation();
       }
     };
-  
+
     initializeApp();
   }, [authentication]);
 
-  NAVIGATION = NAVIGATION.map((item) => {
-    if (item.segment === 'classes') {
-      item.children = classes.map((classItem) => ({
-        title: classItem.class_name,
-        segment: `classes/${classItem.class_id}`,
-        icon: <ClassIcon sx={{ color: stringToMuiColor(classItem.class_name) + " !important" }} />
-      }));
-    }
-    return item;
-  });
-
   return (
-      <Router>
-        <AppProvider 
-        navigation={NAVIGATION} 
-        theme={darkTheme}
-        session={session}
-        authentication={authentication} 
-        branding={{
-          title: 'ClassLoom',
-          // logo only
-        }}
-        >
-           <Routes>
-          {/* Public Routes */}
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          
-          {/* Private Routes */}
-          <Route 
-            path="/*" 
-            element={
-              <PrivateRoute session={session}>
-                <DashboardLayout>
-                  <Routes>
-                    <Route path="/" element={<Home classes={ classes } />} />
-                    <Route path="/assignments" element={<div>Assignments Page</div>} />
-                    <Route path="/settings" element={<div>Settings Page</div>} />
-                  </Routes>
-                </DashboardLayout>
-              </PrivateRoute>
-            } 
-          />
-        </Routes>
-        </AppProvider>
-      </Router>
+    <AppProvider
+      navigation={NAVIGATION}
+      router={router}
+      theme={darkTheme}
+      session={session}
+      authentication={authentication}
+      branding={{
+        title: 'ClassLoom',
+        // logo only
+      }}
+    >
+      <DashboardLayout>
+        <PageContainer>
+          {router.pathname === "/" && <Home />}
+          {router.pathname === "/login" && <Login />}
+          {router.pathname === "/register" && <Register />}
+          {router.pathname === "/assignments" && <Assignments />}
+          {router.pathname === "/settings" && <Settings />}
+          {router.pathname.startsWith("/class/") && (
+            <ClassPage class_id={router.pathname.split("/").pop()} />
+          )}
+        </PageContainer>
+      </DashboardLayout>
+    </AppProvider>
   );
 }
-
-export default App;
