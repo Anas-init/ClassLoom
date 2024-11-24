@@ -3,6 +3,7 @@ from home.models import MyUser,ClassCard,Assignment,Comment,AssignmentSubmission
 from django.utils.encoding import smart_str, force_bytes, DjangoUnicodeDecodeError
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
+from django.utils.timezone import now
 import os
 
     
@@ -99,3 +100,29 @@ class LectureSerializer(serializers.ModelSerializer):
     fields='__all__'
   def create(self, validated_data):
     return Lecture.objects.create(**validated_data)
+class CommentSerializer(serializers.ModelSerializer):
+  class Meta:
+    model=Comment
+    fields='__all__'
+  def validate(self, validated_data):
+    related_fields = ['assignment', 'announcement', 'lecture']
+    related_count = sum(1 for field in related_fields if validated_data.get(field) is not None)
+    if related_count == 0:
+        raise serializers.ValidationError(
+            "A comment must be related to either an assignment, announcement, or lecture."
+        )
+    if related_count > 1:
+        raise serializers.ValidationError(
+            "A comment can only be related to one of assignment, announcement, or lecture."
+        )
+    return validated_data
+  
+  def create(self, validated_data):
+    return Comment.objects.create(**validated_data)
+  def update(self, instance,validated_data):
+    new_description= validated_data.get('description')
+    instance.description=new_description if new_description else instance.description 
+    instance.updated_at=now()
+    instance.is_edited=True 
+    instance.save()
+    return instance

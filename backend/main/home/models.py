@@ -108,6 +108,8 @@ class Comment(models.Model):
     description = models.TextField(null=False)
     created_at = models.DateTimeField(auto_now_add=True)
     assignment = models.ForeignKey(Assignment, on_delete=models.CASCADE, null=True, blank=True, related_name="comments")
+    updated_at = models.DateTimeField(null=True, blank=True)  
+    is_edited = models.BooleanField(default=False) 
     announcement = models.ForeignKey(Announcement, on_delete=models.CASCADE, null=True, blank=True, related_name="comments")
     lecture = models.ForeignKey(Lecture, on_delete=models.CASCADE, null=True, blank=True, related_name="comments")
     

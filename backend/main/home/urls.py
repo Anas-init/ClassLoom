@@ -1,5 +1,5 @@
 from django.urls import path,include
-from .api_views import UserregistrationView,UserLoginView,ClassCardView,EnrollmentsView,GenerateAccessToken,AnnouncementView,AssignmentView,LectureView
+from .api_views import UserregistrationView,UserLoginView,ClassCardView,EnrollmentsView,GenerateAccessToken,AnnouncementView,AssignmentView,LectureView,CommentListView
 urlpatterns = [
     #MyUser APIs
     path('register/',UserregistrationView.as_view(),name='register'),
@@ -29,6 +29,10 @@ urlpatterns = [
     path('retrieve-lecture/',LectureView.as_view(),name='retrieve-lecture'),
     path('update-lecture/',LectureView.as_view(),name='update-lecture'),
     path('delete-lecture/',LectureView.as_view(),name='delete-lecture'),
-    
+    #Comment APIs
+    path('create-comment/',CommentListView.as_view(),name='create-comment'),
+    path('all-comment/',CommentListView.as_view(),name='all-comment'),
+    path('update-comment/',CommentListView.as_view(),name='update-comment'),
+    path('delete-comment/',CommentListView.as_view(),name='delete-comment'),
     
 ]
