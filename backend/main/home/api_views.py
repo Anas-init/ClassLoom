@@ -6,7 +6,7 @@ from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
 from home.renderers import BaseRenderer
 from .serializers import UserRegisterSerializer, UserLoginSerializer,ClassCardSerializer,LectureSerializer,ClassCardRetrieveSerializer,EnrollmentSerializer,AnnouncementSerializer,AssignmentSerializer
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated,AllowAny
 from django.db.models import Count
 from home.models import MyUser
 from math import ceil
@@ -103,6 +103,10 @@ class UserLoginView(APIView):
 class ClassCardView(APIView):
     permission_classes=[IsAuthenticated,IsAdminUser]
     renderer_classes=[BaseRenderer]
+    def get_permissions(self):
+        if self.request.method == 'GET':
+            return [AllowAny()]  # No admin restriction for GET requests
+        return [IsAuthenticated(), IsAdminUser()]  
     def post(self ,request,format=None):
         serializer=ClassCardSerializer(data=request.data,context={'request':request})
         if serializer.is_valid(raise_exception=True):
