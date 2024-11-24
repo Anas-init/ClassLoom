@@ -5,14 +5,17 @@ from rest_framework.views import APIView
 from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
 from home.renderers import BaseRenderer
-from .serializers import UserRegisterSerializer, UserLoginSerializer,ClassCardSerializer,LectureSerializer,ClassCardRetrieveSerializer,EnrollmentSerializer,AnnouncementSerializer,AssignmentSerializer
+from .serializers import UserRegisterSerializer, UserLoginSerializer,ClassCardSerializer,LectureSerializer,ClassCardRetrieveSerializer,EnrollmentSerializer,AnnouncementSerializer,AssignmentSerializer,CommentSerializer
 from rest_framework.permissions import IsAuthenticated,AllowAny
+from django.core.exceptions import ValidationError
+from rest_framework.exceptions import ParseError
 from django.db.models import Count
 from home.models import MyUser
 from math import ceil
 import json
 from rest_framework import filters
 from django.conf import settings
+from django.db.models import Count
 import jwt,os
 import datetime
 from django.db import transaction
@@ -35,7 +38,9 @@ def get_tokens_for_user(user):
 class IsAdminUser(BasePermission):
     def has_permission(self, request, view):
         return bool(request.user and request.user.is_authenticated and getattr(request.user, 'is_admin', False))
-
+class isEnrolled(BasePermission):
+    def has_permission(self, request, view):
+        return bool(request.user and Enrollment.objects.filter(user=request.user.id).exists() or(getattr(request.user, 'is_admin', False)))
 
 class GenerateAccessToken(APIView):
     def get(self, request, format=None):
@@ -239,7 +244,7 @@ class EnrollmentsView(APIView):
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 class AnnouncementView(APIView):
     renderer_classes = [BaseRenderer]
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated,isEnrolled]
     parser_classes = [MultiPartParser, FormParser]
 
     def post(self, request, format=None):
@@ -512,4 +517,73 @@ class LectureView(APIView):
             return Response({'error': 'Lecture with that id does not exist'}, status=status.HTTP_200_OK)
     
             
+class CommentListView(APIView):
+    permission_classes=[IsAuthenticated,isEnrolled]
+    renderer_classes=[BaseRenderer]
+    
+    def get(self, request,format=None):
+        try:
+            assignment_id = request.query_params.get('assignment_id')
+            announcement_id = request.query_params.get('announcement_id')
+            lecture_id = request.query_params.get('lecture_id')
+
+            comments = Comment.objects.all()
+
+            if assignment_id:
+                comments = comments.filter(assignment_id=assignment_id)
+            elif announcement_id:
+                comments = comments.filter(announcement_id=announcement_id)
+            elif lecture_id:
+                comments = comments.filter(lecture_id=lecture_id)
+            else:
+                return Response({'msg':'No material id provided'}, status=status.HTTP_400_BAD_REQUEST)
+            comment_count = comments.aggregate(count=Count('id'))['count']
+            serializer = CommentSerializer(comments, many=True)
+
+            response_data = {
+                "count": comment_count,
+                "comments": serializer.data,
+            }
+
+            return Response(response_data, status=status.HTTP_200_OK)
+
+        except ValidationError as e:
+            return Response({"error": "Invalid query parameter", "details": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+        except ParseError as e:
+            return Response({"error": "Malformed request", "details": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+        except Exception as e:
+            return Response({"error": "An unexpected error occurred", "details": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    def post(self, request,format=None):
+        serializer = CommentSerializer(data=request.data)
+        if serializer.is_valid(raise_exception=True):
+            serializer.save()
+            return Response({'msg':'Comment added succesfully'}, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    def put(self, request,format=None):
+        comm_id=request.query_params.get('comment_id')
+        try:
+            comment=Comment.objects.get(id=comm_id)
+            serializer=CommentSerializer(comment,request.data,partial=True)    
+            if serializer.is_valid(raise_exception=True):
+                serializer.save()
+                return Response({'msg':'Comment Updated Succesfully'}, status=status.HTTP_200_OK)
+            else:
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Comment.DoesNotExist:
+            return Response({'error': 'Comment does not exist'}, status=status.HTTP_400_BAD_REQUEST)
+    def delete(self,request,format=None):
+        comm_id=request.query_params.get('comment_id')
+        if comm_id is None:
+            return Response({'error':'Comment id not specified'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            comment=Comment.objects.get(id=comm_id)
+            comment.delete()
+            return Response({'msg':'Comment deleted succesfully' }, status=status.HTTP_200_OK)
+        except Comment.DoesNotExist:
+            return Response({'error': 'Comment does not exist'}, status=status.HTTP_400_BAD_REQUEST)
         
+        
+        
+    
