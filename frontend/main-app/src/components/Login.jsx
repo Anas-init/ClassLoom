@@ -88,9 +88,11 @@ const Login = () => {
         email: email,
         password: password,
       });
-      const token = response.data.token;
-      localStorage.setItem('authToken', token);
+      const token = response.data;
+      localStorage.setItem('accessToken', token.token.access);
+      localStorage.setItem('refreshToken', token.token.refresh);
       setSuccess(true);
+      window.location.href="/";
     } catch (err) {
       setError(err.response?.data?.detail || 'An error occurred.');
     }

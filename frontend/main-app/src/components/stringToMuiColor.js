@@ -1,16 +1,18 @@
 import { red, pink, purple, indigo, cyan, teal, lightGreen, orange, grey, brown } from '@mui/material/colors';
 
+const STR = 500;
+
 const MUI_COLORS = [
-  cyan[500],
-  lightGreen[500],
-  red[500],
-  purple[500],
-  orange[500],
-  teal[500],
-  pink[500],
-  indigo[500],
-  grey[500],
-  brown[500]
+  cyan[STR],
+  lightGreen[STR],
+  red[STR],
+  purple[STR],
+  orange[STR],
+  teal[STR],
+  pink[STR],
+  indigo[STR],
+  grey[STR],
+  brown[STR]
 ];
 
 // Function to map strings to consistent MUI colors

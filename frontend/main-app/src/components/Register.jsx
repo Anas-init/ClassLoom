@@ -104,8 +104,9 @@ const Register = () => {
         confirm_password: confirmPassword,
         is_admin: isAdmin
       });
-      const token = response.data.token;
-      localStorage.setItem('authToken', token);
+      const token = response.data;
+      localStorage.setItem('accessToken', token.token.access);
+      localStorage.setItem('refreshToken', token.token.refresh);
       setSuccess(true);
     } catch (err) {
       setError(err.response?.data?.detail || 'An error occurred.');
