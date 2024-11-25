@@ -284,7 +284,7 @@ class AnnouncementView(APIView):
                 'attachments': [
                     {
                         'file_name': attachment.file.name,
-                        'file_url': request.build_absolute_uri(attachment.file.url),
+                        'file_url': request.build_absolute_uri(f'/api/media/{attachment.file.name}')
                     }
                     for attachment in announcement.attachments.all()
                 ]
@@ -374,7 +374,7 @@ class AssignmentView(APIView):
                 'attachments': [
                     {
                         'file_name': attachment.file.name,
-                        'file_url': request.build_absolute_uri(attachment.file.url),
+                        'file_url': request.build_absolute_uri(f'/api/media/{attachment.file.name}')
                     }
                     for attachment in assignment.attachments.all()
                 ]
@@ -466,7 +466,7 @@ class LectureView(APIView):
                 'attachments': [
                     {
                         'file_name': attachment.file.name,
-                        'file_url': request.build_absolute_uri(attachment.file.url),
+                        'file_url': request.build_absolute_uri(f'/api/media/{attachment.file.name}')
                     }
                     for attachment in lecture.attachments.all()
                 ]
@@ -605,7 +605,7 @@ class AssignmentSubmissionView(APIView):
                 'attachments': [
                     {
                         'file_name': attachment.file.name,
-                        'file_url': request.build_absolute_uri(attachment.file.url),
+                        'file_url': request.build_absolute_uri(f'/api/media/{attachment.file.name}')
                     }
                     for attachment in submission.attachments.all()
                 ]
@@ -699,3 +699,88 @@ class AssignmentCheckingView(APIView):
                 return Response({'error':'Assignment result does not exist'},status=status.HTTP_400_BAD_REQUEST)
         else:
             return Response({'error':'Submission id not provided'},status=status.HTTP_400_BAD_REQUEST)
+
+
+class ClassStreamView(APIView):
+    renderer_classes = [BaseRenderer]
+    permission_classes = [IsAuthenticated, isEnrolled]
+    parser_classes = [MultiPartParser, FormParser]
+
+    def get(self, request, format=None):
+        class_id = request.query_params.get('class_id')
+        
+        if class_id is None:
+            return Response({'error': 'class_id not provided'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        if not ClassCard.objects.filter(id=class_id).exists():
+            return Response({'error': 'Classcard with that id does not exist'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        query = """
+            WITH announcement_data AS (
+            SELECT 
+                a.id AS announcement_id,
+                a.description,
+                a.created_at,
+                a.updated_at,
+                a.is_edited,
+                json_agg(
+                    json_build_object(
+                        'id', att.id,
+                        'file_name', att.file,
+                        'file_url', CONCAT('http://127.0.0.1:8000/api/media/', att.file)
+                    )
+                ) AS attachments
+            FROM home_announcement a
+            LEFT JOIN home_attachment att ON a.id = att.announcement_id
+            WHERE a.class_card_id = %s
+            GROUP BY a.id, a.description, a.created_at, a.updated_at, a.is_edited
+            ),
+            lecture_data AS (
+                SELECT 
+                    l.id AS lecture_id,
+                    l.title
+                FROM home_lecture l
+                WHERE l.class_card_id = %s
+            ),
+            assignment_data AS (
+                SELECT 
+                    ass.id AS assignment_id,
+                    ass.title
+                FROM home_assignment ass
+                WHERE ass.class_card_id = %s
+            )
+            SELECT 
+                COALESCE((
+                    SELECT json_agg(json_build_object(
+                        'type', 'announcement',
+                        'id', ad.announcement_id,
+                        'description', ad.description,
+                        'created_at', ad.created_at,
+                        'updated_at', ad.updated_at,
+                        'is_edited', ad.is_edited,
+                        'attachments', ad.attachments
+                    )) FROM announcement_data ad
+                ), '[]') AS announcements,
+                COALESCE((
+                    SELECT json_agg(json_build_object(
+                        'type', 'lecture',
+                        'id', ld.lecture_id,
+                        'title', ld.title
+                    )) FROM lecture_data ld
+                ), '[]') AS lectures,
+                COALESCE((
+                    SELECT json_agg(json_build_object(
+                        'type', 'assignment',
+                        'id', as_data.assignment_id,
+                        'title', as_data.title
+                    )) FROM assignment_data as_data
+                ), '[]') AS assignments;
+        """
+        
+        with connection.cursor() as cursor:
+            cursor.execute(query, [class_id, class_id, class_id])
+            result = cursor.fetchone()
+        if not result or all(data is None for data in result):
+            return Response({'error': 'No data found for the given class_id'}, status=status.HTTP_404_NOT_FOUND)
+        announcements, lectures, assignments = result
+        return Response({ 'announcements': announcements or [],'lectures': lectures or [],'assignments': assignments or []}, status=status.HTTP_200_OK)
