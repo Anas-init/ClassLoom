@@ -720,8 +720,11 @@ class ClassStreamView(APIView):
             SELECT 
                 a.id AS announcement_id,
                 a.description,
-                a.created_at,
-                a.updated_at,
+                (a.created_at - INTERVAL '8 hours') AS created_at,
+                (CASE 
+                    WHEN a.updated_at IS NOT NULL THEN (a.updated_at - INTERVAL '8 hours') 
+                    ELSE NULL 
+                END) AS updated_at, 
                 a.is_edited,
                 json_agg(
                     json_build_object(
@@ -734,47 +737,51 @@ class ClassStreamView(APIView):
             LEFT JOIN home_attachment att ON a.id = att.announcement_id
             WHERE a.class_card_id = %s
             GROUP BY a.id, a.description, a.created_at, a.updated_at, a.is_edited
-            ),
-            lecture_data AS (
-                SELECT 
-                    l.id AS lecture_id,
-                    l.title
-                FROM home_lecture l
-                WHERE l.class_card_id = %s
-            ),
-            assignment_data AS (
-                SELECT 
-                    ass.id AS assignment_id,
-                    ass.title
-                FROM home_assignment ass
-                WHERE ass.class_card_id = %s
-            )
+        ),
+        lecture_data AS (
             SELECT 
-                COALESCE((
-                    SELECT json_agg(json_build_object(
-                        'type', 'announcement',
-                        'id', ad.announcement_id,
-                        'description', ad.description,
-                        'created_at', ad.created_at,
-                        'updated_at', ad.updated_at,
-                        'is_edited', ad.is_edited,
-                        'attachments', ad.attachments
-                    )) FROM announcement_data ad
-                ), '[]') AS announcements,
-                COALESCE((
-                    SELECT json_agg(json_build_object(
-                        'type', 'lecture',
-                        'id', ld.lecture_id,
-                        'title', ld.title
-                    )) FROM lecture_data ld
-                ), '[]') AS lectures,
-                COALESCE((
-                    SELECT json_agg(json_build_object(
-                        'type', 'assignment',
-                        'id', as_data.assignment_id,
-                        'title', as_data.title
-                    )) FROM assignment_data as_data
-                ), '[]') AS assignments;
+                l.id AS lecture_id,
+                l.title
+            FROM home_lecture l
+            WHERE l.class_card_id = %s
+        ),
+        assignment_data AS (
+            SELECT 
+                ass.id AS assignment_id,
+                ass.title
+            FROM home_assignment ass
+            WHERE ass.class_card_id = %s
+        )
+        SELECT 
+            COALESCE((
+                SELECT json_agg(json_build_object(
+                    'type', 'announcement',
+                    'id', ad.announcement_id,
+                    'description', ad.description,
+                    'created_at', ad.created_at, -- Adjusted created_at
+                    'updated_at', ad.updated_at, -- Adjusted updated_at
+                    'is_edited', ad.is_edited,
+                    'attachments', ad.attachments
+                ))
+                FROM announcement_data ad
+            ), '[]') AS announcements,
+            COALESCE((
+                SELECT json_agg(json_build_object(
+                    'type', 'lecture',
+                    'id', ld.lecture_id,
+                    'title', ld.title
+                ))
+                FROM lecture_data ld
+            ), '[]') AS lectures,
+            COALESCE((
+                SELECT json_agg(json_build_object(
+                    'type', 'assignment',
+                    'id', ad.assignment_id,
+                    'title', ad.title
+                ))
+                FROM assignment_data ad
+            ), '[]') AS assignments;
+
         """
         
         with connection.cursor() as cursor:
