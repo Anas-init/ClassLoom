@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from home.models import MyUser,ClassCard,Assignment,Comment,AssignmentSubmission,Enrollment,Announcement,Lecture
+from home.models import MyUser,ClassCard,Assignment,Comment,AssignmentSubmission,Enrollment,Announcement,Lecture,AssignmentResult
 from django.utils.encoding import smart_str, force_bytes, DjangoUnicodeDecodeError
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
@@ -126,3 +126,24 @@ class CommentSerializer(serializers.ModelSerializer):
     instance.is_edited=True 
     instance.save()
     return instance
+class AssignmentSubmissionSerializer(serializers.ModelSerializer):
+  class Meta:
+    model=AssignmentSubmission
+    fields='__all__'
+  def create(self,validated_data):
+    return AssignmentSubmission.objects.create(**validated_data)
+class AssignmentResultSerializer(serializers.ModelSerializer):
+  class Meta:
+    model=AssignmentResult
+    fields='__all__'
+  def create(self, validated_data):
+    return AssignmentResult.objects.create(**validated_data)
+  def update(self,instance, validated_data):
+    new_grade=validated_data.get('result_grade')
+    new_feedback=validated_data.get('feedback')
+    instance.grade=new_grade if new_grade is not None else instance.grade
+    instance.feedback=new_feedback if new_feedback is not None else instance.feedback
+    instance.save()
+    return instance
+    
+  

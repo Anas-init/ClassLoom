@@ -70,9 +70,6 @@ class AssignmentSubmission(models.Model):
     student = models.ForeignKey(MyUser, on_delete=models.CASCADE, related_name="submissions")
     submitted_at = models.DateTimeField(auto_now_add=True)
 
-    class Meta:
-        unique_together = ("assignment", "student")
-
     def __str__(self):
         return f"{self.student.name} - {self.assignment.title}"
 
