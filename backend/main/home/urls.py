@@ -1,5 +1,5 @@
 from django.urls import path,include
-from .api_views import UserregistrationView,UserLoginView,ClassCardView,EnrollmentsView,GenerateAccessToken,AnnouncementView,AssignmentView,LectureView,CommentListView
+from .api_views import UserregistrationView,UserLoginView,ClassCardView,EnrollmentsView,GenerateAccessToken,AnnouncementView,AssignmentView,LectureView,CommentListView,AssignmentSubmissionView,AssignmentCheckingView
 urlpatterns = [
     #MyUser APIs
     path('register/',UserregistrationView.as_view(),name='register'),
@@ -34,5 +34,14 @@ urlpatterns = [
     path('all-comment/',CommentListView.as_view(),name='all-comment'),
     path('update-comment/',CommentListView.as_view(),name='update-comment'),
     path('delete-comment/',CommentListView.as_view(),name='delete-comment'),
+    #AssignmentSubmission API
+    path('submit-submission/',AssignmentSubmissionView.as_view(),name='submit-assignment'),
+    path('retrieve-submission/',AssignmentSubmissionView.as_view(),name='retrieve-assignment'),
+    path('update-submission/',AssignmentSubmissionView.as_view(),name='update-assignment'),
+    path('delete-submission/',AssignmentSubmissionView.as_view(),name='delete-assignment'),
+    #AssignmentChecking APIs 
+    path('check-assignment/',AssignmentCheckingView.as_view(),name='check-assignment'),
+    path('update-checking/',AssignmentCheckingView.as_view(),name='update-checking'),
+    path('get-result/',AssignmentCheckingView.as_view(),name='get-result')
     
 ]

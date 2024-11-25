@@ -5,7 +5,7 @@ from rest_framework.views import APIView
 from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
 from home.renderers import BaseRenderer
-from .serializers import UserRegisterSerializer, UserLoginSerializer,ClassCardSerializer,LectureSerializer,ClassCardRetrieveSerializer,EnrollmentSerializer,AnnouncementSerializer,AssignmentSerializer,CommentSerializer
+from .serializers import UserRegisterSerializer, UserLoginSerializer,ClassCardSerializer,LectureSerializer,ClassCardRetrieveSerializer,EnrollmentSerializer,AnnouncementSerializer,AssignmentSerializer,CommentSerializer,AssignmentSubmissionSerializer,AssignmentResultSerializer
 from rest_framework.permissions import IsAuthenticated,AllowAny
 from django.core.exceptions import ValidationError
 from rest_framework.exceptions import ParseError
@@ -22,7 +22,7 @@ from django.db import transaction
 import uuid
 from rest_framework.parsers import MultiPartParser, FormParser
 from django.db import connection
-from home.models import MyUser,ClassCard,Assignment,Comment,AssignmentSubmission,Enrollment,Announcement,Attachment,Lecture
+from home.models import MyUser,ClassCard,Assignment,Comment,AssignmentSubmission,Enrollment,Announcement,Attachment,Lecture,AssignmentResult
 from django.utils.dateformat import format
 from django.utils.timezone import now
 from rest_framework.permissions import BasePermission
@@ -63,10 +63,10 @@ class GenerateAccessToken(APIView):
             'iat': int(current_time.timestamp()),     
             'jti': str(uuid.uuid4()),                
             'user_id': user_id,
-            'role': user.is_admin                       
+            'role': user.is_admin,
         }
         new_access_token = jwt.encode(new_access_token_payload, settings.SECRET_KEY, algorithm='HS256')
-        return Response({'access_token': new_access_token}, status=status.HTTP_200_OK)
+        return Response({'access_token': new_access_token,'name':user.name,'email':user.email}, status=status.HTTP_200_OK)
 
 class UserregistrationView(APIView):
     renderer_classes = [BaseRenderer]
@@ -78,6 +78,8 @@ class UserregistrationView(APIView):
             token = get_tokens_for_user(user)
             msg = {
                 'token': token,
+                'name':serializer.data.get('name'),
+                'email':serializer.data.get('email'),
                 'message': 'Registration successful'
             }
             return Response(msg, status=status.HTTP_201_CREATED)
@@ -96,7 +98,10 @@ class UserLoginView(APIView):
                 token = get_tokens_for_user(user)
                 msg = {
                     'token': token,
+                    'name':user.name,
+                    'email':user.email,
                     'message': 'Login Successful'
+                    
                 }
                 return Response(msg, status=status.HTTP_200_OK)
             else:
@@ -583,7 +588,114 @@ class CommentListView(APIView):
             return Response({'msg':'Comment deleted succesfully' }, status=status.HTTP_200_OK)
         except Comment.DoesNotExist:
             return Response({'error': 'Comment does not exist'}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class AssignmentSubmissionView(APIView):
+    permission_classes=[IsAuthenticated,isEnrolled]
+    renderer_classes=[BaseRenderer]
+    parser_classes=[MultiPartParser,FormParser]
+    def get(self, request, format=None):
+        sub_id=request.query_params.get('submission_id')
+        try:
+            submissions=AssignmentSubmission.objects.filter(id=sub_id).prefetch_related('attachments')
+            data = [
+            {
+                'id': submission.id,
+                'submitted_at': submission.submitted_at.isoformat(),
+                'attachments': [
+                    {
+                        'file_name': attachment.file.name,
+                        'file_url': request.build_absolute_uri(attachment.file.url),
+                    }
+                    for attachment in submission.attachments.all()
+                ]
+            }
+                for submission in submissions
+            ]
+            formatted_data = json.dumps({'Submission': data}, indent=4)
+            return Response(json.loads(formatted_data), status=status.HTTP_200_OK)
+        except AssignmentSubmission.DoesNotExist:
+            return Response({'msg':'Assignment Submission with that id does not exist'}, status=status.HTTP_200_OK)
+    def post(self, request, format=None):
+        serializer=AssignmentSubmissionSerializer(data=request.data)
+        attachment=request.FILES.getlist('attachments')
+        if serializer.is_valid(raise_exception=True):
+            turn_in=serializer.save()
+            if turn_in:
+                for file in attachment:
+                    Attachment.objects.create(file=file,submission=turn_in)
+            return Response({'msg':'Assignment turned in successfully'},status=status.HTTP_200_OK)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            
         
-        
-        
-    
+    def put(self, request, format=None):
+        sub_id=request.query_params.get('submission_id')
+        if not sub_id:
+            return Response({'error': 'Submission ID is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            submission = AssignmentSubmission.objects.get(pk=sub_id, student=request.user)
+        except Lecture.DoesNotExist:
+            return Response({'error': 'Lecture not found or access denied'}, status=status.HTTP_404_NOT_FOUND)
+
+        data = request.data
+        submission.submitted_at=now()
+        new_attachments = request.FILES.getlist('attachments')  
+        remove_attachment_ids = data.getlist('remove_attachments', [])  
+        with transaction.atomic():
+            if remove_attachment_ids:
+                attachments_to_remove = Attachment.objects.filter(
+                    id__in=remove_attachment_ids, 
+                    submission=submission
+                )
+                for attachment in attachments_to_remove:
+                    if attachment.file:
+                        attachment.file.delete(save=False)  
+                        attachment.delete()  
+            if new_attachments:
+                for file in new_attachments:
+                    Attachment.objects.create(file=file, submission=submission)
+        return Response({'msg': 'Submission updated successfully'}, status=status.HTTP_200_OK)  
+    def delete(self, request, format=None):
+        sub_id=request.query_params.get('submission_id')
+        try:
+            submission=AssignmentSubmission.objects.get(id=sub_id)
+            attachments=Attachment.objects.filter(submission=submission)
+            for attachment in attachments:
+                attachment.file.delete(save=False)
+            submission.delete()
+            return Response({'msg':'Submission deleted successfully'},status=status.HTTP_200_OK)
+        except Lecture.DoesNotExist:
+            return Response({'error': 'Submission with that id does not exist'}, status=status.HTTP_200_OK)
+class AssignmentCheckingView(APIView):
+    renderer_classes=[BaseRenderer]
+    permission_classes=[IsAuthenticated,IsAdminUser]
+    def get(self,request,format=None):
+        sub_id=request.query_params.get('submission_id')
+        try:
+            query=AssignmentResult.objects.get(assignmentsubmission=sub_id)
+            serializer=AssignmentResultSerializer(query)
+            return Response(serializer.data,status=status.HTTP_200_OK)
+        except AssignmentResult.DoesNotExist:
+            return Response({'error':'No result for that submission id exist'},status=status.HTTP_400_BAD_REQUEST)
+    def post(self,request,format=None):
+        serializer=AssignmentResultSerializer(data=request.data)
+        if serializer.is_valid(raise_exception=True):
+            serializer.save()
+            return Response({'msg':'Result returned uccessfully'},status=status.HTTP_200_OK)
+        else:
+            return Response(serializer.errors,status=status.HTTP_400_BAD_REQUEST) 
+    def put(self,request,format=None):
+        sub_id=request.query_params.get('submission_id')
+        if sub_id :
+            try:
+                submission=AssignmentResult.objects.get(assignmentsubmission=sub_id)
+                serializer=AssignmentResultSerializer(submission,request.data,partial=True)
+                if serializer.is_valid(raise_exception=True):
+                    serializer.save()
+                    return Response({'msg':'Assignment Checking updated Succesfully'},status=status.HTTP_200_OK)
+            except AssignmentResult.DoesNotExist:
+                return Response({'error':'Assignment result does not exist'},status=status.HTTP_400_BAD_REQUEST)
+        else:
+            return Response({'error':'Submission id not provided'},status=status.HTTP_400_BAD_REQUEST)
