@@ -1,5 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import BaseUserManager, AbstractBaseUser
+from django.utils.timezone import timezone,localtime
 
 # Custom user manager
 class MyUserManager(BaseUserManager):
