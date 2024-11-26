@@ -17,6 +17,7 @@ from rest_framework import filters
 from django.conf import settings
 from django.db.models import Count
 import jwt,os
+from datetime import timedelta
 import datetime
 from django.db import transaction
 import uuid
@@ -24,7 +25,7 @@ from rest_framework.parsers import MultiPartParser, FormParser
 from django.db import connection
 from home.models import MyUser,ClassCard,Assignment,Comment,AssignmentSubmission,Enrollment,Announcement,Attachment,Lecture,AssignmentResult
 from django.utils.dateformat import format
-from django.utils.timezone import now
+from django.utils.timezone import now,localtime
 from rest_framework.permissions import BasePermission
 
 def get_tokens_for_user(user):
@@ -240,7 +241,6 @@ class EnrollmentsView(APIView):
                 WHERE user_id IN ({placeholders}) AND class_card_id = %s
             """
             params = ids + [class_id]
-            
             with connection.cursor() as cursor:
                 cursor.execute(query, params)
 
@@ -275,8 +275,8 @@ class AnnouncementView(APIView):
             {
                 'id': announcement.id,
                 'description': announcement.description,
-                'created_at': announcement.created_at.isoformat(),
-                'is_updated': announcement.updated_at.isoformat() if announcement.updated_at else None,
+                'created_at': (localtime(announcement.created_at) - timedelta(hours=8)).strftime('%Y-%m-%d %H:%M:%S'),
+                'is_updated': (localtime(announcement.updated_at) - timedelta(hours=8)).strftime('%Y-%m-%d %H:%M:%S') if announcement.updated_at else None,
                 'is_edited':announcement.is_edited, 
                 'creator': {
                     'name': announcement.creator.name
@@ -363,10 +363,10 @@ class AssignmentView(APIView):
                 'id': assignment.id,
                 'title':assignment.title,
                 'description': assignment.description,
-                'due_date':assignment.due_date.isoformat(),
+                'due_date':localtime(assignment.due_date).strftime('%Y-%m-%d %H:%M:%S'),
                 'grade':assignment.grade,
-                'created_at': assignment.created_at.isoformat(),
-                'is_updated': assignment.updated_at.isoformat() if assignment.updated_at else None,
+                'created_at': (localtime(assignment.created_at) - timedelta(hours=8)).strftime('%Y-%m-%d %H:%M:%S'),
+                'is_updated': (localtime(assignment.updated_at) - timedelta(hours=8)).strftime('%Y-%m-%d %H:%M:%S') if assignment.updated_at else None,
                 'is_edited':assignment.is_edited, 
                 'creator': {
                     'name': assignment.creator.name
@@ -457,8 +457,8 @@ class LectureView(APIView):
                 'id': lecture.id,
                 'title':lecture.title,
                 'description': lecture.description,
-                'created_at': lecture.created_at.isoformat(),
-                'is_updated': lecture.updated_at.isoformat() if lecture.updated_at else None,
+                'created_at': (localtime(lecture.created_at) - timedelta(hours=8)).strftime('%Y-%m-%d %H:%M:%S'),
+                'is_updated': (localtime(lecture.updated_at) - timedelta(hours=8)).strftime('%Y-%m-%d %H:%M:%S') if  lecture.updated_at else None,
                 'is_edited':lecture.is_edited, 
                 'creator': {
                     'name': lecture.creator.name
@@ -601,7 +601,7 @@ class AssignmentSubmissionView(APIView):
             data = [
             {
                 'id': submission.id,
-                'submitted_at': submission.submitted_at.isoformat(),
+                'submitted_at': (localtime(submission.submitted_at) - timedelta(hours=8)).strftime('%Y-%m-%d %H:%M:%S'),
                 'attachments': [
                     {
                         'file_name': attachment.file.name,
