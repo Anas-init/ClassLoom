@@ -1,7 +1,7 @@
 from django.urls import path,include
 from django.conf import settings
 from django.conf.urls.static import static
-from .api_views import UserregistrationView,UserLoginView,ClassCardView,EnrollmentsView,GenerateAccessToken,AnnouncementView,AssignmentView,LectureView,CommentListView,AssignmentSubmissionView,AssignmentCheckingView,ClassStreamView
+from .api_views import UserregistrationView,UserLoginView,ClassCardView,EnrollmentsView,GenerateAccessToken,AnnouncementView,AssignmentView,LectureView,CommentListView,AssignmentSubmissionView,AssignmentCheckingView,ClassStreamView,TodoView
 urlpatterns = [
     #MyUser APIs
     path('register/',UserregistrationView.as_view(),name='register'),
@@ -47,6 +47,8 @@ urlpatterns = [
     path('get-result/',AssignmentCheckingView.as_view(),name='get-result'),
     #ClassStream APIs
     path('class-stream/',ClassStreamView.as_view(),name='class-stream'),
+    #Todo Assignments
+    path('todo/',TodoView.as_view(),name='todo'),
 ]
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
