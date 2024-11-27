@@ -744,12 +744,18 @@ class ClassStreamView(APIView):
                 (a.created_at - INTERVAL '8 hours') AS created_at,
                 (CASE WHEN a.updated_at IS NOT NULL THEN (a.updated_at - INTERVAL '8 hours') ELSE NULL END) AS updated_at, 
                 a.is_edited,
-                json_agg(
-                    json_build_object(
-                        'id', att.id,
-                        'file_name', att.file,
-                        'file_url', CONCAT('http://127.0.0.1:8000/api/media/', att.file)
-                    )
+                COALESCE(
+                    json_agg(
+                        CASE 
+                            WHEN att.id IS NOT NULL THEN 
+                                json_build_object(
+                                    'id', att.id,
+                                    'file_name', att.file,
+                                    'file_url', CONCAT('http://127.0.0.1:8000/api/media/', att.file)
+                                )
+                            ELSE NULL 
+                        END
+                    ) FILTER (WHERE att.id IS NOT NULL), '[]'
                 ) AS attachments
             FROM home_announcement a
             LEFT JOIN home_attachment att ON a.id = att.announcement_id
@@ -776,8 +782,8 @@ class ClassStreamView(APIView):
                     'type', 'announcement',
                     'id', ad.announcement_id,
                     'description', ad.description,
-                    'created_at', ad.created_at, -- Adjusted created_at
-                    'updated_at', ad.updated_at, -- Adjusted updated_at
+                    'created_at', ad.created_at,
+                    'updated_at', ad.updated_at,
                     'is_edited', ad.is_edited,
                     'attachments', ad.attachments
                 ))
