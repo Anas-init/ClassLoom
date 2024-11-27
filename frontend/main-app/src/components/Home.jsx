@@ -10,9 +10,8 @@ const Home = () => {
     const fetchClasses = async () => {
       try {
         const accessToken = localStorage.getItem('accessToken');
-        const response = await axios.post(
-          "http://127.0.0.1:8000/api/classes/",
-          {},
+        const response = await axios.get(
+          'http://127.0.0.1:8000/api/classes/',
           {
             headers: {
               Authorization: `Bearer ${accessToken}`,
@@ -20,6 +19,7 @@ const Home = () => {
           }
         );
         setClasses(response.data);
+        
       } catch (err) {
         console.error("Error fetching classes:", err);
         setError("Failed to load classes.");

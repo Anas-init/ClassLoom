@@ -137,7 +137,7 @@ export default function App() {
           }
         />
         <Route
-          path="/class/:classId"
+          path="/class/:class_id"
           element={
             <PrivateRoute session={session}>
               <ClassPage />
