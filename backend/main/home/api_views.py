@@ -123,19 +123,43 @@ class ClassCardView(APIView):
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     def get (self, request,format=None):
+        user_id = request.user.id  
+        is_admin = request.user.is_admin  
+
+        query = ""
+        params = []
+
+        if is_admin:
+            query = """
+                SELECT c.id AS class_id, c.class_name, u.name AS creator_name
+                FROM home_classcard c
+                INNER JOIN home_myuser u ON c.creator_id = u.id
+                WHERE c.creator_id = %s;
+            """
+            params = [user_id]
+        else:
+            query = """
+                SELECT c.id AS class_id, c.class_name, u.name AS creator_name
+                FROM home_enrollment e
+                INNER JOIN home_classcard c ON e.class_card_id = c.id
+                INNER JOIN home_myuser u ON c.creator_id = u.id
+                WHERE e.user_id = %s;
+            """
+            params = [user_id]
+
         with connection.cursor() as cursor:
-            cursor.execute(
-                "SELECT c.id AS class_id , c.class_name,creator.name FROM home_classcard c INNER JOIN home_myuser creator ON c.creator_id=creator.id;"
-            )
-            data=cursor.fetchall();
-            data_list = [
+            cursor.execute(query, params)
+            data = cursor.fetchall()
+
+        data_list = [
             {
-             'class_id':row[0],
-             'class_name': row[1], 
-             'creator': row[2]
+                "class_id": row[0],
+                "class_name": row[1],
+                "creator_name": row[2],
             }
             for row in data
         ]
+
         return Response(data_list, status=status.HTTP_200_OK)
     def put (self,request,format=None ):
         class_id=request.query_params.get('class_id')
