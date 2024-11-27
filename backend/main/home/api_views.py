@@ -5,23 +5,27 @@ from rest_framework.views import APIView
 from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
 from home.renderers import BaseRenderer
-from .serializers import UserRegisterSerializer, UserLoginSerializer,ClassCardSerializer,LectureSerializer,ClassCardRetrieveSerializer,EnrollmentSerializer,AnnouncementSerializer,AssignmentSerializer
+from .serializers import UserRegisterSerializer, UserLoginSerializer,ClassCardSerializer,LectureSerializer,ClassCardRetrieveSerializer,EnrollmentSerializer,AnnouncementSerializer,AssignmentSerializer,CommentSerializer,AssignmentSubmissionSerializer,AssignmentResultSerializer
 from rest_framework.permissions import IsAuthenticated,AllowAny
+from django.core.exceptions import ValidationError
+from rest_framework.exceptions import ParseError
 from django.db.models import Count
 from home.models import MyUser
 from math import ceil
 import json
 from rest_framework import filters
 from django.conf import settings
+from django.db.models import Count
 import jwt,os
+from datetime import timedelta
 import datetime
 from django.db import transaction
 import uuid
 from rest_framework.parsers import MultiPartParser, FormParser
 from django.db import connection
-from home.models import MyUser,ClassCard,Assignment,Comment,AssignmentSubmission,Enrollment,Announcement,Attachment,Lecture
+from home.models import MyUser,ClassCard,Assignment,Comment,AssignmentSubmission,Enrollment,Announcement,Attachment,Lecture,AssignmentResult
 from django.utils.dateformat import format
-from django.utils.timezone import now
+from django.utils.timezone import now,localtime
 from rest_framework.permissions import BasePermission
 
 def get_tokens_for_user(user):
@@ -35,7 +39,9 @@ def get_tokens_for_user(user):
 class IsAdminUser(BasePermission):
     def has_permission(self, request, view):
         return bool(request.user and request.user.is_authenticated and getattr(request.user, 'is_admin', False))
-
+class isEnrolled(BasePermission):
+    def has_permission(self, request, view):
+        return bool(request.user and Enrollment.objects.filter(user=request.user.id).exists() or(getattr(request.user, 'is_admin', False)))
 
 class GenerateAccessToken(APIView):
     def get(self, request, format=None):
@@ -58,10 +64,10 @@ class GenerateAccessToken(APIView):
             'iat': int(current_time.timestamp()),     
             'jti': str(uuid.uuid4()),                
             'user_id': user_id,
-            'role': user.is_admin                       
+            'role': user.is_admin,
         }
         new_access_token = jwt.encode(new_access_token_payload, settings.SECRET_KEY, algorithm='HS256')
-        return Response({'access_token': new_access_token}, status=status.HTTP_200_OK)
+        return Response({'access_token': new_access_token,'name':user.name,'email':user.email}, status=status.HTTP_200_OK)
 
 class UserregistrationView(APIView):
     renderer_classes = [BaseRenderer]
@@ -73,6 +79,8 @@ class UserregistrationView(APIView):
             token = get_tokens_for_user(user)
             msg = {
                 'token': token,
+                'name':serializer.data.get('name'),
+                'email':serializer.data.get('email'),
                 'message': 'Registration successful'
             }
             return Response(msg, status=status.HTTP_201_CREATED)
@@ -91,7 +99,10 @@ class UserLoginView(APIView):
                 token = get_tokens_for_user(user)
                 msg = {
                     'token': token,
+                    'name':user.name,
+                    'email':user.email,
                     'message': 'Login Successful'
+                    
                 }
                 return Response(msg, status=status.HTTP_200_OK)
             else:
@@ -230,7 +241,6 @@ class EnrollmentsView(APIView):
                 WHERE user_id IN ({placeholders}) AND class_card_id = %s
             """
             params = ids + [class_id]
-            
             with connection.cursor() as cursor:
                 cursor.execute(query, params)
 
@@ -239,7 +249,7 @@ class EnrollmentsView(APIView):
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 class AnnouncementView(APIView):
     renderer_classes = [BaseRenderer]
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated,isEnrolled]
     parser_classes = [MultiPartParser, FormParser]
 
     def post(self, request, format=None):
@@ -265,8 +275,8 @@ class AnnouncementView(APIView):
             {
                 'id': announcement.id,
                 'description': announcement.description,
-                'created_at': announcement.created_at.isoformat(),
-                'is_updated': announcement.updated_at.isoformat() if announcement.updated_at else None,
+                'created_at': (localtime(announcement.created_at) - timedelta(hours=8)).strftime('%Y-%m-%d %H:%M:%S'),
+                'is_updated': (localtime(announcement.updated_at) - timedelta(hours=8)).strftime('%Y-%m-%d %H:%M:%S') if announcement.updated_at else None,
                 'is_edited':announcement.is_edited, 
                 'creator': {
                     'name': announcement.creator.name
@@ -274,7 +284,7 @@ class AnnouncementView(APIView):
                 'attachments': [
                     {
                         'file_name': attachment.file.name,
-                        'file_url': request.build_absolute_uri(attachment.file.url),
+                        'file_url': request.build_absolute_uri(f'/api/media/{attachment.file.name}')
                     }
                     for attachment in announcement.attachments.all()
                 ]
@@ -353,10 +363,10 @@ class AssignmentView(APIView):
                 'id': assignment.id,
                 'title':assignment.title,
                 'description': assignment.description,
-                'due_date':assignment.due_date.isoformat(),
+                'due_date':localtime(assignment.due_date).strftime('%Y-%m-%d %H:%M:%S'),
                 'grade':assignment.grade,
-                'created_at': assignment.created_at.isoformat(),
-                'is_updated': assignment.updated_at.isoformat() if assignment.updated_at else None,
+                'created_at': (localtime(assignment.created_at) - timedelta(hours=8)).strftime('%Y-%m-%d %H:%M:%S'),
+                'is_updated': (localtime(assignment.updated_at) - timedelta(hours=8)).strftime('%Y-%m-%d %H:%M:%S') if assignment.updated_at else None,
                 'is_edited':assignment.is_edited, 
                 'creator': {
                     'name': assignment.creator.name
@@ -364,7 +374,7 @@ class AssignmentView(APIView):
                 'attachments': [
                     {
                         'file_name': attachment.file.name,
-                        'file_url': request.build_absolute_uri(attachment.file.url),
+                        'file_url': request.build_absolute_uri(f'/api/media/{attachment.file.name}')
                     }
                     for attachment in assignment.attachments.all()
                 ]
@@ -447,8 +457,8 @@ class LectureView(APIView):
                 'id': lecture.id,
                 'title':lecture.title,
                 'description': lecture.description,
-                'created_at': lecture.created_at.isoformat(),
-                'is_updated': lecture.updated_at.isoformat() if lecture.updated_at else None,
+                'created_at': (localtime(lecture.created_at) - timedelta(hours=8)).strftime('%Y-%m-%d %H:%M:%S'),
+                'is_updated': (localtime(lecture.updated_at) - timedelta(hours=8)).strftime('%Y-%m-%d %H:%M:%S') if  lecture.updated_at else None,
                 'is_edited':lecture.is_edited, 
                 'creator': {
                     'name': lecture.creator.name
@@ -456,7 +466,7 @@ class LectureView(APIView):
                 'attachments': [
                     {
                         'file_name': attachment.file.name,
-                        'file_url': request.build_absolute_uri(attachment.file.url),
+                        'file_url': request.build_absolute_uri(f'/api/media/{attachment.file.name}')
                     }
                     for attachment in lecture.attachments.all()
                 ]
@@ -512,4 +522,272 @@ class LectureView(APIView):
             return Response({'error': 'Lecture with that id does not exist'}, status=status.HTTP_200_OK)
     
             
+class CommentListView(APIView):
+    permission_classes=[IsAuthenticated,isEnrolled]
+    renderer_classes=[BaseRenderer]
+    
+    def get(self, request,format=None):
+        try:
+            assignment_id = request.query_params.get('assignment_id')
+            announcement_id = request.query_params.get('announcement_id')
+            lecture_id = request.query_params.get('lecture_id')
+
+            comments = Comment.objects.all()
+
+            if assignment_id:
+                comments = comments.filter(assignment_id=assignment_id)
+            elif announcement_id:
+                comments = comments.filter(announcement_id=announcement_id)
+            elif lecture_id:
+                comments = comments.filter(lecture_id=lecture_id)
+            else:
+                return Response({'msg':'No material id provided'}, status=status.HTTP_400_BAD_REQUEST)
+            comment_count = comments.aggregate(count=Count('id'))['count']
+            serializer = CommentSerializer(comments, many=True)
+
+            response_data = {
+                "count": comment_count,
+                "comments": serializer.data,
+            }
+
+            return Response(response_data, status=status.HTTP_200_OK)
+
+        except ValidationError as e:
+            return Response({"error": "Invalid query parameter", "details": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+        except ParseError as e:
+            return Response({"error": "Malformed request", "details": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+        except Exception as e:
+            return Response({"error": "An unexpected error occurred", "details": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    def post(self, request,format=None):
+        serializer = CommentSerializer(data=request.data)
+        if serializer.is_valid(raise_exception=True):
+            serializer.save()
+            return Response({'msg':'Comment added succesfully'}, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    def put(self, request,format=None):
+        comm_id=request.query_params.get('comment_id')
+        try:
+            comment=Comment.objects.get(id=comm_id)
+            serializer=CommentSerializer(comment,request.data,partial=True)    
+            if serializer.is_valid(raise_exception=True):
+                serializer.save()
+                return Response({'msg':'Comment Updated Succesfully'}, status=status.HTTP_200_OK)
+            else:
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Comment.DoesNotExist:
+            return Response({'error': 'Comment does not exist'}, status=status.HTTP_400_BAD_REQUEST)
+    def delete(self,request,format=None):
+        comm_id=request.query_params.get('comment_id')
+        if comm_id is None:
+            return Response({'error':'Comment id not specified'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            comment=Comment.objects.get(id=comm_id)
+            comment.delete()
+            return Response({'msg':'Comment deleted succesfully' }, status=status.HTTP_200_OK)
+        except Comment.DoesNotExist:
+            return Response({'error': 'Comment does not exist'}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class AssignmentSubmissionView(APIView):
+    permission_classes=[IsAuthenticated,isEnrolled]
+    renderer_classes=[BaseRenderer]
+    parser_classes=[MultiPartParser,FormParser]
+    def get(self, request, format=None):
+        sub_id=request.query_params.get('submission_id')
+        try:
+            submissions=AssignmentSubmission.objects.filter(id=sub_id).prefetch_related('attachments')
+            data = [
+            {
+                'id': submission.id,
+                'submitted_at': (localtime(submission.submitted_at) - timedelta(hours=8)).strftime('%Y-%m-%d %H:%M:%S'),
+                'attachments': [
+                    {
+                        'file_name': attachment.file.name,
+                        'file_url': request.build_absolute_uri(f'/api/media/{attachment.file.name}')
+                    }
+                    for attachment in submission.attachments.all()
+                ]
+            }
+                for submission in submissions
+            ]
+            formatted_data = json.dumps({'Submission': data}, indent=4)
+            return Response(json.loads(formatted_data), status=status.HTTP_200_OK)
+        except AssignmentSubmission.DoesNotExist:
+            return Response({'msg':'Assignment Submission with that id does not exist'}, status=status.HTTP_200_OK)
+    def post(self, request, format=None):
+        serializer=AssignmentSubmissionSerializer(data=request.data)
+        attachment=request.FILES.getlist('attachments')
+        if serializer.is_valid(raise_exception=True):
+            turn_in=serializer.save()
+            if turn_in:
+                for file in attachment:
+                    Attachment.objects.create(file=file,submission=turn_in)
+            return Response({'msg':'Assignment turned in successfully'},status=status.HTTP_200_OK)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            
         
+    def put(self, request, format=None):
+        sub_id=request.query_params.get('submission_id')
+        if not sub_id:
+            return Response({'error': 'Submission ID is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            submission = AssignmentSubmission.objects.get(pk=sub_id, student=request.user)
+        except Lecture.DoesNotExist:
+            return Response({'error': 'Lecture not found or access denied'}, status=status.HTTP_404_NOT_FOUND)
+
+        data = request.data
+        submission.submitted_at=now()
+        new_attachments = request.FILES.getlist('attachments')  
+        remove_attachment_ids = data.getlist('remove_attachments', [])  
+        with transaction.atomic():
+            if remove_attachment_ids:
+                attachments_to_remove = Attachment.objects.filter(
+                    id__in=remove_attachment_ids, 
+                    submission=submission
+                )
+                for attachment in attachments_to_remove:
+                    if attachment.file:
+                        attachment.file.delete(save=False)  
+                        attachment.delete()  
+            if new_attachments:
+                for file in new_attachments:
+                    Attachment.objects.create(file=file, submission=submission)
+        return Response({'msg': 'Submission updated successfully'}, status=status.HTTP_200_OK)  
+    def delete(self, request, format=None):
+        sub_id=request.query_params.get('submission_id')
+        try:
+            submission=AssignmentSubmission.objects.get(id=sub_id)
+            attachments=Attachment.objects.filter(submission=submission)
+            for attachment in attachments:
+                attachment.file.delete(save=False)
+            submission.delete()
+            return Response({'msg':'Submission deleted successfully'},status=status.HTTP_200_OK)
+        except Lecture.DoesNotExist:
+            return Response({'error': 'Submission with that id does not exist'}, status=status.HTTP_200_OK)
+class AssignmentCheckingView(APIView):
+    renderer_classes=[BaseRenderer]
+    permission_classes=[IsAuthenticated,IsAdminUser]
+    def get(self,request,format=None):
+        sub_id=request.query_params.get('submission_id')
+        try:
+            query=AssignmentResult.objects.get(assignmentsubmission=sub_id)
+            serializer=AssignmentResultSerializer(query)
+            return Response(serializer.data,status=status.HTTP_200_OK)
+        except AssignmentResult.DoesNotExist:
+            return Response({'error':'No result for that submission id exist'},status=status.HTTP_400_BAD_REQUEST)
+    def post(self,request,format=None):
+        serializer=AssignmentResultSerializer(data=request.data)
+        if serializer.is_valid(raise_exception=True):
+            serializer.save()
+            return Response({'msg':'Result returned uccessfully'},status=status.HTTP_200_OK)
+        else:
+            return Response(serializer.errors,status=status.HTTP_400_BAD_REQUEST) 
+    def put(self,request,format=None):
+        sub_id=request.query_params.get('submission_id')
+        if sub_id :
+            try:
+                submission=AssignmentResult.objects.get(assignmentsubmission=sub_id)
+                serializer=AssignmentResultSerializer(submission,request.data,partial=True)
+                if serializer.is_valid(raise_exception=True):
+                    serializer.save()
+                    return Response({'msg':'Assignment Checking updated Succesfully'},status=status.HTTP_200_OK)
+            except AssignmentResult.DoesNotExist:
+                return Response({'error':'Assignment result does not exist'},status=status.HTTP_400_BAD_REQUEST)
+        else:
+            return Response({'error':'Submission id not provided'},status=status.HTTP_400_BAD_REQUEST)
+
+
+class ClassStreamView(APIView):
+    renderer_classes = [BaseRenderer]
+    permission_classes = [IsAuthenticated, isEnrolled]
+    parser_classes = [MultiPartParser, FormParser]
+
+    def get(self, request, format=None):
+        class_id = request.query_params.get('class_id')
+        
+        if class_id is None:
+            return Response({'error': 'class_id not provided'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        if not ClassCard.objects.filter(id=class_id).exists():
+            return Response({'error': 'Classcard with that id does not exist'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        query = """
+            WITH announcement_data AS (
+            SELECT 
+                a.id AS announcement_id,
+                a.description,
+                (a.created_at - INTERVAL '8 hours') AS created_at,
+                (CASE 
+                    WHEN a.updated_at IS NOT NULL THEN (a.updated_at - INTERVAL '8 hours') 
+                    ELSE NULL 
+                END) AS updated_at, 
+                a.is_edited,
+                json_agg(
+                    json_build_object(
+                        'id', att.id,
+                        'file_name', att.file,
+                        'file_url', CONCAT('http://127.0.0.1:8000/api/media/', att.file)
+                    )
+                ) AS attachments
+            FROM home_announcement a
+            LEFT JOIN home_attachment att ON a.id = att.announcement_id
+            WHERE a.class_card_id = %s
+            GROUP BY a.id, a.description, a.created_at, a.updated_at, a.is_edited
+        ),
+        lecture_data AS (
+            SELECT 
+                l.id AS lecture_id,
+                l.title
+            FROM home_lecture l
+            WHERE l.class_card_id = %s
+        ),
+        assignment_data AS (
+            SELECT 
+                ass.id AS assignment_id,
+                ass.title
+            FROM home_assignment ass
+            WHERE ass.class_card_id = %s
+        )
+        SELECT 
+            COALESCE((
+                SELECT json_agg(json_build_object(
+                    'type', 'announcement',
+                    'id', ad.announcement_id,
+                    'description', ad.description,
+                    'created_at', ad.created_at, -- Adjusted created_at
+                    'updated_at', ad.updated_at, -- Adjusted updated_at
+                    'is_edited', ad.is_edited,
+                    'attachments', ad.attachments
+                ))
+                FROM announcement_data ad
+            ), '[]') AS announcements,
+            COALESCE((
+                SELECT json_agg(json_build_object(
+                    'type', 'lecture',
+                    'id', ld.lecture_id,
+                    'title', ld.title
+                ))
+                FROM lecture_data ld
+            ), '[]') AS lectures,
+            COALESCE((
+                SELECT json_agg(json_build_object(
+                    'type', 'assignment',
+                    'id', ad.assignment_id,
+                    'title', ad.title
+                ))
+                FROM assignment_data ad
+            ), '[]') AS assignments;
+
+        """
+        
+        with connection.cursor() as cursor:
+            cursor.execute(query, [class_id, class_id, class_id])
+            result = cursor.fetchone()
+        if not result or all(data is None for data in result):
+            return Response({'error': 'No data found for the given class_id'}, status=status.HTTP_404_NOT_FOUND)
+        announcements, lectures, assignments = result
+        return Response({ 'announcements': announcements or [],'lectures': lectures or [],'assignments': assignments or []}, status=status.HTTP_200_OK)

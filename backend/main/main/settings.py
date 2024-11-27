@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/5.0/ref/settings/
 import os
 
 from pathlib import Path
+from env.credentials import NAME, PASSWORD,USER,HOST,PORT
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -28,6 +29,8 @@ SECRET_KEY = 'django-insecure-6hp(x7-*zxm(8($fdg8wlp7-fp(y!27#nea*w6063+^o4gfpu$
 DEBUG = True
 
 ALLOWED_HOSTS = []
+TIME_ZONE = 'Asia/Karachi'  # e.g., 'America/Los_Angeles' or 'Asia/Karachi'
+USE_TZ = True
 
 
 # Application definition
@@ -50,7 +53,6 @@ INSTALLED_APPS = [
     'corsheaders',
     'rest_framework_simplejwt.token_blacklist',
 ]
-
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -61,6 +63,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
+
 
 ROOT_URLCONF = 'main.urls'
 
@@ -87,15 +90,20 @@ WSGI_APPLICATION = 'main.wsgi.application'
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
 
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
+  'default': {
+    'ENGINE': 'django.db.backends.postgresql',
+    'NAME': NAME,
+    'USER': USER,
+    'PASSWORD': PASSWORD,
+    'HOST': HOST,
+    'PORT': PORT,
+  }
 }
 
-AUTH_USER_MODEL='home.MyUser'
 # Password validation
 # https://docs.djangoproject.com/en/5.0/ref/settings/#auth-password-validators
+AUTH_USER_MODEL = 'home.MyUser'
+
 
 AUTH_PASSWORD_VALIDATORS = [
     {
@@ -131,6 +139,7 @@ SIMPLE_JWT = {
     "AUTH_HEADER_NAME": "HTTP_AUTHORIZATION",
     "USER_ID_FIELD": "id",
     "USER_ID_CLAIM": "user_id",
+    
     "USER_AUTHENTICATION_RULE": "rest_framework_simplejwt.authentication.default_user_authentication_rule",
 
     "AUTH_TOKEN_CLASSES": ("rest_framework_simplejwt.tokens.AccessToken",),
