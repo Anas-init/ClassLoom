@@ -1,15 +1,43 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import axios from 'axios';
 import ClassCard from './ClassCard';
 
 const Home = () => {
-  const classes = [
-    { class_id: 1, class_name: 'Mathematics 101', creator: 'Dr. Alice' },
-    { class_id: 2, class_name: 'Physics 202', creator: 'Prof. Bob' },
-    { class_id: 3, class_name: 'History 303', creator: 'Dr. Carol' },
-  ];
-  
+  const [classes, setClasses] = useState([]);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const fetchClasses = async () => {
+      try {
+        const accessToken = localStorage.getItem('accessToken');
+        const response = await axios.post(
+          "http://127.0.0.1:8000/api/classes/",
+          {},
+          {
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+            },
+          }
+        );
+        setClasses(response.data);
+      } catch (err) {
+        console.error("Error fetching classes:", err);
+        setError("Failed to load classes.");
+      }
+    };
+
+    fetchClasses();
+  }, []);
+
+  if (error) {
+    return <p>{error}</p>;
+  }
+
   return (
-    <ClassCard classes={classes} />
+    <div>
+      <h1>Welcome to Home</h1>
+      <ClassCard classes={classes} />
+    </div>
   );
 };
 
