@@ -4,6 +4,7 @@ from rest_framework import status
 from rest_framework.views import APIView
 from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
+import psycopg2
 from home.renderers import BaseRenderer
 from .serializers import UserRegisterSerializer, UserLoginSerializer,ClassCardSerializer,LectureSerializer,ClassCardRetrieveSerializer,EnrollmentSerializer,AnnouncementSerializer,AssignmentSerializer,CommentSerializer,AssignmentSubmissionSerializer,AssignmentResultSerializer
 from rest_framework.permissions import IsAuthenticated,AllowAny
@@ -112,12 +113,8 @@ class UserLoginView(APIView):
 
     
 class ClassCardView(APIView):
-    permission_classes=[IsAuthenticated,IsAdminUser]
+    permission_classes=[IsAuthenticated]
     renderer_classes=[BaseRenderer]
-    def get_permissions(self):
-        if self.request.method == 'GET':
-            return [AllowAny()]  # No admin restriction for GET requests
-        return [IsAuthenticated(), IsAdminUser()]  
     def post(self ,request,format=None):
         serializer=ClassCardSerializer(data=request.data,context={'request':request})
         if serializer.is_valid(raise_exception=True):
@@ -291,7 +288,7 @@ class AnnouncementView(APIView):
             }
             for announcement in announcements
         ]
-        formatted_data = json.dumps({'assignment': data}, indent=4)
+        formatted_data = json.dumps({'Announcements': data}, indent=4)
         return Response(json.loads(formatted_data), status=status.HTTP_200_OK)
     def put(self, request, format=None):
         ann_id = request.query_params.get('announcement_id')
@@ -721,10 +718,7 @@ class ClassStreamView(APIView):
                 a.id AS announcement_id,
                 a.description,
                 (a.created_at - INTERVAL '8 hours') AS created_at,
-                (CASE 
-                    WHEN a.updated_at IS NOT NULL THEN (a.updated_at - INTERVAL '8 hours') 
-                    ELSE NULL 
-                END) AS updated_at, 
+                (CASE WHEN a.updated_at IS NOT NULL THEN (a.updated_at - INTERVAL '8 hours') ELSE NULL END) AS updated_at, 
                 a.is_edited,
                 json_agg(
                     json_build_object(
@@ -791,3 +785,37 @@ class ClassStreamView(APIView):
             return Response({'error': 'No data found for the given class_id'}, status=status.HTTP_404_NOT_FOUND)
         announcements, lectures, assignments = result
         return Response({ 'announcements': announcements or [],'lectures': lectures or [],'assignments': assignments or []}, status=status.HTTP_200_OK)
+    
+class TodoView(APIView):
+    renderer_classes = [BaseRenderer]
+    permission_classes = [IsAuthenticated, isEnrolled]
+
+    def get(self, request, format=None):
+        p_class_id = request.data.get('class_id')
+        p_student_id = request.data.get('student_id')
+
+        if not p_class_id or not p_student_id:
+            return Response({"error": "class_id and student_id are required."}, status=400)
+
+        try:
+            with connection.cursor() as cursor:
+                cur=connection.cursor()
+                cur.callproc('get_assignment_status', (p_class_id, p_student_id,))
+                result = cur.fetchone()  
+            if result:
+                stats = result[0]
+            else:
+                stats = {
+                    "total_assigned": 0,
+                    "total_assigned_details": [],
+                    "total_turned_in": 0,
+                    "total_turned_in_details": [],
+                    "total_missed": 0,
+                    "total_missed_details": [],
+                    "total_late_submitted": 0,
+                    "total_late_submitted_details": []
+                }
+
+            return Response(stats, status=200)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
