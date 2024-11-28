@@ -90,11 +90,15 @@ class AnnouncementSerializer(serializers.ModelSerializer):
   def create(self, validated_data):
     return Announcement.objects.create(**validated_data)
 class AssignmentSerializer(serializers.ModelSerializer):
-  class Meta:
-    model=Assignment
-    fields='__all__'
-  def create(self, validated_data):
-    return Assignment.objects.create(**validated_data)
+    class Meta:
+        model = Assignment
+        fields = '__all__'
+    def create(self, validated_data):
+        request = self.context.get('request')
+        if request and request.user:
+            validated_data['creator'] = request.user
+        return super().create(validated_data)
+
 class LectureSerializer(serializers.ModelSerializer):
   class Meta:
     model=Lecture

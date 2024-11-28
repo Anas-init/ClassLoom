@@ -410,16 +410,17 @@ class AssignmentView(APIView):
     permission_classes=[IsAuthenticated]
     renderer_classes=[BaseRenderer]
     parser_classes=[MultiPartParser,FormParser]
-    def post(self, request,format=None):
-        serializer=AssignmentSerializer(data=request.data)
-        attachments=request.FILES.getlist('attachments')
+    def post(self, request, format=None):
+        serializer = AssignmentSerializer(data=request.data, context={'request': request})
+        attachments = request.FILES.getlist('attachments')
+
         if serializer.is_valid(raise_exception=True):
-            assignment=serializer.save()
+            assignment = serializer.save()
             if attachments:
                 for file in attachments:
-                    Attachment.objects.create(file=file,assignment=assignment)
+                    Attachment.objects.create(file=file, assignment=assignment)
             self.send_emails_to_students(assignment)
-            return Response({'msg':'Assignment created successfully'}, status=status.HTTP_200_OK)
+            return Response({'msg': 'Assignment created successfully'}, status=status.HTTP_200_OK)
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     def get( self, request, format=None):
@@ -503,14 +504,11 @@ class AssignmentView(APIView):
             return Response({'error': 'Assignment with that id does not exist'}, status=status.HTTP_200_OK)
     def send_emails_to_students(self, assignment): 
         class_card = assignment.class_card
-        
-        # Fetch student emails for the class
         students = MyUser.objects.filter(
             enrollments__class_card=class_card,
-            is_admin=False  # Filter for students
+            is_admin=False  
         ).values_list('email', flat=True)
         
-        # Prepare email content
         teacher_name = assignment.creator.name
         class_name = class_card.class_name
         subject = f"New Assignment in {class_name}"
@@ -548,14 +546,12 @@ class LectureView(APIView):
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     def send_emails_to_students(self, lecture): 
         class_card = lecture.class_card
-        
-        # Fetch student emails for the class
         students = MyUser.objects.filter(
             enrollments__class_card=class_card,
-            is_admin=False  # Filter for students
+            is_admin=False  
         ).values_list('email', flat=True)
         
-        # Prepare email content
+
         teacher_name = lecture.creator.name
         class_name = class_card.class_name
         subject = f"New Lecture in {class_name}"
@@ -964,23 +960,17 @@ class AllSubmissionsView(APIView):
     permission_classes=[IsAuthenticated,IsAdminUser]
     
     def get(self, request, format=None):
-        # Retrieve the assignment ID from query parameters
         assi_id = request.query_params.get('assignment_id')
         
         if not assi_id:
             return Response({"error": "assignment_id is required"}, status=400)
         
-        # Fetch the assignment and submissions
         assignment = get_object_or_404(Assignment, pk=assi_id)
         submissions = AssignmentSubmission.objects.filter(assignment=assignment).select_related('student')
-
-        # Count submissions
         total_submissions = submissions.count()
 
-        # Get total students in the class
-        total_students = Enrollment.objects.filter(class_card=assignment.class_card).count()
 
-        # Prepare the data
+        total_students = Enrollment.objects.filter(class_card=assignment.class_card).count()
         submissions_data = [
             {
                 "submission_id": submission.pk,
@@ -1012,4 +1002,4 @@ class RestrictSubmission(APIView):
         if AssignmentSubmission.objects.filter(assignment=assi_id,student=request.user.id).exists():
             return Response({'flag':True },status=status.HTTP_200_OK)
         else:
-            return Response({'flag':False},status=status.HTTP_200_OK
+            return Response({'flag':False},status=status.HTTP_200_OK)
