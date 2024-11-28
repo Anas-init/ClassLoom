@@ -929,7 +929,8 @@ class AllSubmissionsView(APIView):
                 "submission_id": submission.pk,
                 "student_id": submission.student.pk,
                 "student_name": submission.student.name,
-                "submitted_at": submission.submitted_at
+                "submitted_at":(localtime(submission.submitted_at)).strftime('%Y-%m-%d %H:%M:%S'),
+                
             }
             for submission in submissions
         ]
