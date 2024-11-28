@@ -13,11 +13,13 @@ from rest_framework.exceptions import ParseError
 from django.db.models import Count
 from home.models import MyUser
 from math import ceil
+from django.core.mail import send_mass_mail
 import json
 from rest_framework import filters
 from django.conf import settings
 from django.db.models import Count
 import jwt,os
+from django.shortcuts import get_object_or_404
 from datetime import timedelta
 import datetime
 from django.db import transaction
@@ -28,6 +30,7 @@ from home.models import MyUser,ClassCard,Assignment,Comment,AssignmentSubmission
 from django.utils.dateformat import format
 from django.utils.timezone import now,localtime
 from rest_framework.permissions import BasePermission
+from .tasks import send_emails_from_queue
 
 def get_tokens_for_user(user):
     refresh = RefreshToken.for_user(user)
@@ -285,18 +288,53 @@ class AnnouncementView(APIView):
     renderer_classes = [BaseRenderer]
     permission_classes = [IsAuthenticated,isEnrolled]
     parser_classes = [MultiPartParser, FormParser]
-
     def post(self, request, format=None):
         data = request.data
-        attachments = request.FILES.getlist('attachments')  
+        attachments = request.FILES.getlist('attachments')
         serializer = AnnouncementSerializer(data=data)
         if serializer.is_valid(raise_exception=True):
             announcement = serializer.save()
+            
             if attachments:
                 for file in attachments:
                     Attachment.objects.create(file=file, announcement=announcement)
+            
+            # Send emails to students
+            # self.send_emails_to_students(announcement)
+            
             return Response({'msg': 'Announcement created successfully'}, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    # def send_emails_to_students(self, announcement): 
+    #     class_card = announcement.class_card
+        
+    #     # Fetch student emails for the class
+    #     students = MyUser.objects.filter(
+    #         enrollments__class_card=class_card,
+    #         is_admin=False  # Filter for students
+    #     ).values_list('email', flat=True)
+        
+    #     # Prepare email content
+    #     teacher_name = announcement.creator.name
+    #     class_name = class_card.class_name
+    #     subject = f"New Announcement in {class_name}"
+    #     message = f"""
+    #     Hello,
+
+    #     {teacher_name} has posted a new announcement in your class, {class_name}.
+
+    #     Title: {"Announcement"}
+    #     Description: {announcement.description}
+
+    #     Best regards,
+    #     Class Management System
+    #     """
+    #     email_messages = [
+    #         (subject, message, settings.EMAIL_HOST_USER, [student_email])
+    #         for student_email in students
+    #     ]
+    #     send_mass_mail(email_messages, fail_silently=False)
+
     def get(self, request, format=None):
         class_id = request.query_params.get('class_id')
         if not class_id:
@@ -862,3 +900,48 @@ class TodoView(APIView):
             return Response(stats, status=200)
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class AllSubmissionsView(APIView):
+    renderer_classes=[BaseRenderer]
+    permission_classes=[IsAuthenticated,IsAdminUser]
+    
+    def get(self, request, format=None):
+        # Retrieve the assignment ID from query parameters
+        assi_id = request.query_params.get('assignment_id')
+        
+        if not assi_id:
+            return Response({"error": "assignment_id is required"}, status=400)
+        
+        # Fetch the assignment and submissions
+        assignment = get_object_or_404(Assignment, pk=assi_id)
+        submissions = AssignmentSubmission.objects.filter(assignment=assignment).select_related('student')
+
+        # Count submissions
+        total_submissions = submissions.count()
+
+        # Get total students in the class
+        total_students = Enrollment.objects.filter(class_card=assignment.class_card).count()
+
+        # Prepare the data
+        submissions_data = [
+            {
+                "submission_id": submission.pk,
+                "student_id": submission.student.pk,
+                "student_name": submission.student.name,
+                "submitted_at": submission.submitted_at
+            }
+            for submission in submissions
+        ]
+        
+        response_data = {
+            "assignment_id": assignment.pk,
+            "assignment_title": assignment.title,
+            "total_submissions": total_submissions,
+            "total_students": total_students,
+            "submissions_summary": f"{total_submissions}/{total_students} students submitted",
+            "submissions": submissions_data,
+        }
+
+        return Response(response_data, status=200)
+    
