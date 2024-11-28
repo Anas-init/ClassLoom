@@ -10,10 +10,14 @@ const AssignmentPage = () => {
   const [submissions, setSubmissions] = useState(null);
   const [error, setError] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [submissionSuccess, setSubmissionSuccess] = useState(false);
+  const [canSubmit, setCanSubmit] = useState(true); 
 
   const accessToken = localStorage.getItem('accessToken');
   const decodedToken = jwtDecode(accessToken);
   const isTeacher = decodedToken.role;
+  const studentId = decodedToken.user_id; // Assuming the token contains the student's ID
 
   const fetchAssignmentDetails = async () => {
     try {
@@ -27,7 +31,6 @@ const AssignmentPage = () => {
         }
       );
 
-      // The API returns assignment as an array, so we take the first object
       const assignmentData = response.data.assignment[0];
       setAssignmentDetails(assignmentData);
     } catch (err) {
@@ -35,6 +38,26 @@ const AssignmentPage = () => {
       setError('Failed to load assignment details.');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const fetchSubmissionStatus = async () => {
+    try {
+      const token = localStorage.getItem('accessToken');
+      const response = await axios.get(
+        `http://127.0.0.1:8000/api/restrict-submission/?assignment_id=${assignment_id}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      console.log(response.data);
+      setCanSubmit(response.data.can_submit); // Assuming the API returns { can_submit: true/false }
+    } catch (err) {
+      console.error('Error checking submission status:', err);
+      setError('Failed to check submission status.');
     }
   };
 
@@ -50,7 +73,7 @@ const AssignmentPage = () => {
         }
       );
 
-      setSubmissions(response.data.submissions); // Set submissions data
+      setSubmissions(response.data.submissions);
     } catch (err) {
       console.error('Error fetching submissions:', err);
       setError('Failed to load submissions.');
@@ -59,11 +82,54 @@ const AssignmentPage = () => {
     }
   };
 
+  const handleFileChange = (e) => {
+    setSelectedFile(e.target.files[0]);
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    if (!selectedFile) {
+      alert('Please select a file to submit.');
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('assignment', assignment_id);
+    formData.append('student', studentId);
+    formData.append('attachments', selectedFile);
+
+    try {
+      const token = localStorage.getItem('accessToken');
+      const response = await axios.post(
+        'http://127.0.0.1:8000/api/submit-submission/',
+        formData,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'multipart/form-data',
+          },
+        }
+      );
+
+      if (response.data) {
+        setSubmissionSuccess(true);
+        alert('Submission successful!');
+      } else {
+        setError('Failed to submit the assignment.');
+      }
+    } catch (err) {
+      console.error('Error submitting assignment:', err);
+      setError('Error submitting assignment. Please try again later.');
+    }
+  };
+
   useEffect(() => {
     if (isTeacher) {
       fetchSubmissions();
     } else {
       fetchAssignmentDetails();
+      fetchSubmissionStatus();
     }
   }, [isTeacher]);
 
@@ -86,6 +152,31 @@ const AssignmentPage = () => {
           <p><strong>Description:</strong></p>
           <p>{assignmentDetails.description}</p>
           <p><strong>Grade:</strong> {assignmentDetails.grade}</p>
+
+          {/* Restricting submission */}
+          {canSubmit ? (
+            <>
+              <h2>Submit Your Assignment</h2>
+              <form onSubmit={handleSubmit}>
+                <div>
+                  <label htmlFor="file-upload">Upload your solution (PDF, DOCX, etc.):</label>
+                  <input
+                    type="file"
+                    id="file-upload"
+                    name="attachments"
+                    onChange={handleFileChange}
+                    accept=".pdf, .docx, .txt"
+                    required
+                  />
+                </div>
+                <button type="submit">Submit Assignment</button>
+              </form>
+
+              {submissionSuccess && <p>Your submission was successful!</p>}
+            </>
+          ) : (
+            <p>You have already submitted this assignment.</p>
+          )}
 
           {assignmentDetails.attachments && assignmentDetails.attachments.length > 0 && (
             <div style={{ marginTop: '20px' }}>
