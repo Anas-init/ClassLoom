@@ -1003,3 +1003,13 @@ class AllSubmissionsView(APIView):
 
         return Response(response_data, status=200)
     
+
+class RestrictSubmission(APIView):
+    renderer_classes=[BaseRenderer]
+    permission_classes=[IsAuthenticated,isEnrolled]
+    def get ( self,request,format =None):
+        assi_id=request.query_params.get('assignment_id')
+        if AssignmentSubmission.objects.filter(assignment=assi_id,student=request.user.id).exists():
+            return Response({'flag':True },status=status.HTTP_200_OK)
+        else:
+            return Response({'flag':False},status=status.HTTP_200_OK)
