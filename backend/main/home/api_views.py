@@ -799,7 +799,7 @@ class AssignmentSubmissionView(APIView):
             return Response({'error': 'Submission with that id does not exist'}, status=status.HTTP_200_OK)
 class AssignmentCheckingView(APIView):
     renderer_classes=[BaseRenderer]
-    permission_classes=[IsAuthenticated,IsAdminUser]
+    permission_classes=[IsAuthenticated,isEnrolled]
     def get(self,request,format=None):
         sub_id=request.query_params.get('submission_id')
         try:
@@ -1012,4 +1012,4 @@ class RestrictSubmission(APIView):
         if AssignmentSubmission.objects.filter(assignment=assi_id,student=request.user.id).exists():
             return Response({'flag':True },status=status.HTTP_200_OK)
         else:
-            return Response({'flag':False},status=status.HTTP_200_OK)
+            return Response({'flag':False},status=status.HTTP_200_OK
