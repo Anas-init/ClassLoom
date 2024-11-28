@@ -9,8 +9,10 @@ import Login from './components/Login';
 import Register from './components/Register';
 import ClassPage from './components/ClassPage';
 import AssignmentPage from './components/AssignmentPage';
+import SubmissionPage from './components/SubmissionPage';
 
 function PrivateRoute({ session, children }) {
+  console.log(session);
   if (!session) {
     return <Navigate to="/login" />;
   }
@@ -100,9 +102,17 @@ export default function App() {
             </PrivateRoute>
           }
         />
+        <Route
+          path="/submission/:submission_id"
+          element={
+            <PrivateRoute session={session}>
+              <SubmissionPage />
+            </PrivateRoute>
+          }
+        />
 
         {/* Fallback Route */}
-        <Route path="*" element={<Navigate to="/register" />} />
+        <Route path="*" element={<Navigate to="/login" />} />
       </Routes>
     </Router>
   );
