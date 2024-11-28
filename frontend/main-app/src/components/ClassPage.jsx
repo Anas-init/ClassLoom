@@ -4,6 +4,7 @@ import axios from 'axios';
 import Announcements from './Announcements';
 import Lectures from './Lectures';
 import Assignments from './Assignments';
+import Participants from './Participants';
 
 const ClassPage = () => {
   const { class_id } = useParams();
@@ -43,9 +44,10 @@ const ClassPage = () => {
   return (
     <div>
       <h1>Class {class_id} Stream</h1>
-      <Announcements announcements={stream.announcements} />
+      <Announcements announcements={stream.announcements} refreshStream={() => setStream({ ...stream })} />
       <Lectures lectures={stream.lectures} />
       <Assignments assignments={stream.assignments} />
+      <Participants class_id={class_id} />
     </div>
   );
 };

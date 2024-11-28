@@ -15,6 +15,7 @@ import {
   Checkbox,
 } from '@mui/material';
 import MuiCard from '@mui/material/Card';
+import { Link } from 'react-router-dom';
 
 
 // Picked template from https://github.com/mui/material-ui/blob/v6.1.8/docs/data/material/getting-started/templates/sign-up/SignUp.js
@@ -108,6 +109,7 @@ const Register = () => {
       localStorage.setItem('accessToken', token.token.access);
       localStorage.setItem('refreshToken', token.token.refresh);
       setSuccess(true);
+      window.location.href = "/login";
     } catch (err) {
       setError(err.response?.data?.detail || 'An error occurred.');
     }
@@ -201,6 +203,12 @@ const Register = () => {
             <Button type="submit" fullWidth variant="contained">
               Sign up
             </Button>
+            <p style={{ marginTop: '20px' }}>
+              Already have an account?{' '}
+              <Link to="/login" style={{ color: '#007bff', textDecoration: 'none' }}>
+                Login
+              </Link>
+            </p>
           </Box>
         </Card>
       </SignUpContainer>
