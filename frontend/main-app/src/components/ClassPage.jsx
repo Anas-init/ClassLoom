@@ -49,7 +49,7 @@ const ClassPage = () => {
       <h3>By: {creatorName}</h3>
       <Announcements class_id={class_id} announcements={stream.announcements} refreshStream={() => setStream({ ...stream })} />
       <Lectures lectures={stream.lectures} />
-      <Assignments assignments={stream.assignments} />
+      <Assignments assignments={stream.assignments} class_id={class_id} />
       <Participants class_id={class_id} />
     </div>
   );

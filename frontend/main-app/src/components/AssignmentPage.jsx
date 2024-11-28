@@ -12,7 +12,10 @@ const AssignmentPage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [selectedFile, setSelectedFile] = useState(null);
   const [submissionSuccess, setSubmissionSuccess] = useState(false);
-  const [canSubmit, setCanSubmit] = useState(true); 
+  const [canSubmit, setCanSubmit] = useState(true);
+  const [result, setResult] = useState(null); // To store result data
+  const [resultLoading, setResultLoading] = useState(false); // To show loading while fetching result
+  const [resultError, setResultError] = useState(null); // To handle result fetching errors
 
   const accessToken = localStorage.getItem('accessToken');
   const decodedToken = jwtDecode(accessToken);
@@ -53,7 +56,7 @@ const AssignmentPage = () => {
         }
       );
 
-      console.log(response.data);
+      console.log("submission status" + response.data);
       setCanSubmit(response.data.can_submit); // Assuming the API returns { can_submit: true/false }
     } catch (err) {
       console.error('Error checking submission status:', err);
@@ -124,6 +127,34 @@ const AssignmentPage = () => {
     }
   };
 
+  const { submission_id } = useParams();
+  const fetchResult = async () => {
+    setResultLoading(true); // Show loading state while fetching result
+    setResultError(null); // Reset error message if any
+
+    try {
+      const response = await axios.get(
+        `http://127.0.0.1:8000/api/get-result/?submission_id=${submission_id}`,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        }
+      );
+
+      if (response.data) {
+        setResult(response.data); // Store the result data
+      } else {
+        setResultError('Your submission is not graded yet.');
+      }
+    } catch (err) {
+      console.error('Error fetching result:', err);
+      setResultError('Error fetching result. Please try again later.');
+    } finally {
+      setResultLoading(false); // Hide loading state
+    }
+  };
+
   useEffect(() => {
     if (isTeacher) {
       fetchSubmissions();
@@ -177,6 +208,21 @@ const AssignmentPage = () => {
           ) : (
             <p>You have already submitted this assignment.</p>
           )}
+
+           {/* Result Section */}
+           <div style={{ marginTop: '20px' }}>
+            <button onClick={fetchResult} disabled={resultLoading}>
+              {resultLoading ? 'Loading...' : 'Get Result'}
+            </button>
+            {result && (
+              <div>
+                <h3>Result</h3>
+                <p><strong>Grade:</strong> {result.grade}</p>
+                <p><strong>Feedback:</strong> {result.feedback || 'No feedback available.'}</p>
+              </div>
+            )}
+            {resultError && <p>{resultError}</p>}
+          </div>
 
           {assignmentDetails.attachments && assignmentDetails.attachments.length > 0 && (
             <div style={{ marginTop: '20px' }}>

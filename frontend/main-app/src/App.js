@@ -12,7 +12,6 @@ import AssignmentPage from './components/AssignmentPage';
 import SubmissionPage from './components/SubmissionPage';
 
 function PrivateRoute({ session, children }) {
-  console.log(session);
   if (!session) {
     return <Navigate to="/login" />;
   }
