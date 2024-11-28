@@ -797,7 +797,7 @@ class AssignmentCheckingView(APIView):
     renderer_classes=[BaseRenderer]
     permission_classes=[IsAuthenticated,isEnrolled]
     def get(self,request,format=None):
-        sub_id=request.query_params.get('submission_id')
+        sub_id=request.query_params.get('assignment_id')
         try:
             query=AssignmentResult.objects.get(assignmentsubmission=sub_id)
             serializer=AssignmentResultSerializer(query)
