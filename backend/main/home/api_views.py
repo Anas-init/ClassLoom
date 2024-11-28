@@ -30,8 +30,6 @@ from home.models import MyUser,ClassCard,Assignment,Comment,AssignmentSubmission
 from django.utils.dateformat import format
 from django.utils.timezone import now,localtime
 from rest_framework.permissions import BasePermission
-from .tasks import send_emails_from_queue
-
 def get_tokens_for_user(user):
     refresh = RefreshToken.for_user(user)
     refresh['role'] = user.is_admin  
@@ -299,41 +297,40 @@ class AnnouncementView(APIView):
                 for file in attachments:
                     Attachment.objects.create(file=file, announcement=announcement)
             
-            # Send emails to students
-            # self.send_emails_to_students(announcement)
+            self.send_emails_to_students(announcement)
             
             return Response({'msg': 'Announcement created successfully'}, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    # def send_emails_to_students(self, announcement): 
-    #     class_card = announcement.class_card
+    def send_emails_to_students(self, announcement): 
+        class_card = announcement.class_card
         
-    #     # Fetch student emails for the class
-    #     students = MyUser.objects.filter(
-    #         enrollments__class_card=class_card,
-    #         is_admin=False  # Filter for students
-    #     ).values_list('email', flat=True)
+        # Fetch student emails for the class
+        students = MyUser.objects.filter(
+            enrollments__class_card=class_card,
+            is_admin=False  # Filter for students
+        ).values_list('email', flat=True)
         
-    #     # Prepare email content
-    #     teacher_name = announcement.creator.name
-    #     class_name = class_card.class_name
-    #     subject = f"New Announcement in {class_name}"
-    #     message = f"""
-    #     Hello,
+        # Prepare email content
+        teacher_name = announcement.creator.name
+        class_name = class_card.class_name
+        subject = f"New Announcement in {class_name}"
+        message = f"""
+        Hello,
 
-    #     {teacher_name} has posted a new announcement in your class, {class_name}.
+        {teacher_name} has posted a new announcement in your class, {class_name}.
 
-    #     Title: {"Announcement"}
-    #     Description: {announcement.description}
+        Title: {"Announcement"}
+        Description: {announcement.description}
 
-    #     Best regards,
-    #     Class Management System
-    #     """
-    #     email_messages = [
-    #         (subject, message, settings.EMAIL_HOST_USER, [student_email])
-    #         for student_email in students
-    #     ]
-    #     send_mass_mail(email_messages, fail_silently=False)
+        Best regards,
+        Class Management System
+        """
+        email_messages = [
+            (subject, message, settings.EMAIL_HOST_USER, [student_email])
+            for student_email in students
+        ]
+        send_mass_mail(email_messages, fail_silently=False)
 
     def get(self, request, format=None):
         class_id = request.query_params.get('class_id')
@@ -410,7 +407,7 @@ class AnnouncementView(APIView):
             return Response({'error': 'Announcement with that id does not exist'}, status=status.HTTP_200_OK)
 
 class AssignmentView(APIView):
-    permission_classes=[IsAuthenticated,IsAdminUser]
+    permission_classes=[IsAuthenticated]
     renderer_classes=[BaseRenderer]
     parser_classes=[MultiPartParser,FormParser]
     def post(self, request,format=None):
@@ -421,6 +418,7 @@ class AssignmentView(APIView):
             if attachments:
                 for file in attachments:
                     Attachment.objects.create(file=file,assignment=assignment)
+            self.send_emails_to_students(assignment)
             return Response({'msg':'Assignment created successfully'}, status=status.HTTP_200_OK)
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -503,6 +501,35 @@ class AssignmentView(APIView):
             return Response({'msg':'Assignment deleted successfully'},status=status.HTTP_200_OK)
         except Assignment.DoesNotExist:
             return Response({'error': 'Assignment with that id does not exist'}, status=status.HTTP_200_OK)
+    def send_emails_to_students(self, assignment): 
+        class_card = assignment.class_card
+        
+        # Fetch student emails for the class
+        students = MyUser.objects.filter(
+            enrollments__class_card=class_card,
+            is_admin=False  # Filter for students
+        ).values_list('email', flat=True)
+        
+        # Prepare email content
+        teacher_name = assignment.creator.name
+        class_name = class_card.class_name
+        subject = f"New Assignment in {class_name}"
+        message = f"""
+        Hello,
+
+        {teacher_name} has posted a new assignment in your class, {class_name}.
+
+        Title: {"Assignment"}
+        Description: {assignment.description}
+
+        Best regards,
+        Class Management System
+        """
+        email_messages = [
+            (subject, message, settings.EMAIL_HOST_USER, [student_email])
+            for student_email in students
+        ]
+        send_mass_mail(email_messages, fail_silently=False)
 class LectureView(APIView):
     permission_classes=[IsAuthenticated,IsAdminUser]
     renderer_classes=[BaseRenderer]
@@ -515,9 +542,39 @@ class LectureView(APIView):
             if lecture:
                 for file in attachments:
                     Attachment.objects.create(file=file,lecture=lecture)
+                self.send_emails_to_students(lecture)
             return Response({'msg':'Lecture created successfully'}, status=status.HTTP_200_OK)
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    def send_emails_to_students(self, lecture): 
+        class_card = lecture.class_card
+        
+        # Fetch student emails for the class
+        students = MyUser.objects.filter(
+            enrollments__class_card=class_card,
+            is_admin=False  # Filter for students
+        ).values_list('email', flat=True)
+        
+        # Prepare email content
+        teacher_name = lecture.creator.name
+        class_name = class_card.class_name
+        subject = f"New Lecture in {class_name}"
+        message = f"""
+        Hello,
+
+        {teacher_name} has posted a new lecture in your class, {class_name}.
+
+        Title: {"Lecture"}
+        Description: {lecture.description}
+
+        Best regards,
+        Class Management System
+        """
+        email_messages = [
+            (subject, message, settings.EMAIL_HOST_USER, [student_email])
+            for student_email in students
+        ]
+        send_mass_mail(email_messages, fail_silently=False)
     def get( self, request, format=None):
         lec_id=request.query_params.get('lecture_id')
         if not lec_id:
