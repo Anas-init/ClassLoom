@@ -127,14 +127,13 @@ const AssignmentPage = () => {
     }
   };
 
-  const { submission_id } = useParams();
   const fetchResult = async () => {
     setResultLoading(true); // Show loading state while fetching result
     setResultError(null); // Reset error message if any
 
     try {
       const response = await axios.get(
-        `http://127.0.0.1:8000/api/get-result/?submission_id=${submission_id}`,
+        `http://127.0.0.1:8000/api/get-result/?assignment_id=${assignment_id}`,
         {
           headers: {
             Authorization: `Bearer ${accessToken}`,
