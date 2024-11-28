@@ -26,13 +26,17 @@ export default function ClassCard({ classes }) {
               backgroundColor: stringToMuiColor(classItem.class_name),
             }}
           >
-            <Typography 
-              gutterBottom 
-              variant="h5" 
-              component={Link} 
+            <Typography
+              gutterBottom
+              variant="h5"
+              component={Link}
               to={`/class/${classItem.class_id}`}
+              state={{
+                className: classItem.class_name,
+                creatorName: classItem.creator,
+              }}
               sx={{
-                textDecoration: "none", 
+                textDecoration: "none",
                 color: "inherit",
                 "&:hover": { textDecoration: "underline" }
               }}

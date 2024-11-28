@@ -13,6 +13,7 @@ import {
   Divider,
 } from '@mui/material';
 import MuiCard from '@mui/material/Card';
+import { Link } from 'react-router-dom';
 
 // Picked template from https://github.com/mui/material-ui/blob/v6.1.8/docs/data/material/getting-started/templates/sign-up/SignUp.js
 const Card = styled(MuiCard)(({ theme }) => ({
@@ -157,6 +158,12 @@ const Login = () => {
             <Button type="submit" fullWidth variant="contained">
               Sign In
             </Button>
+            <p style={{ marginTop: '20px' }}>
+              Don't have an account?{' '}
+              <Link to="/register" style={{ color: '#007bff', textDecoration: 'none' }}>
+                Register
+              </Link>
+            </p>
           </Box>
         </Card>
       </SignInContainer>
