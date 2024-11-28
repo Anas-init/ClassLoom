@@ -103,21 +103,27 @@ class LectureSerializer(serializers.ModelSerializer):
     return Lecture.objects.create(**validated_data)
 class CommentSerializer(serializers.ModelSerializer):
   class Meta:
-    model=Comment
-    fields='__all__'
+      model = Comment
+      fields = '__all__'
+  def to_representation(self, instance):
+        data = super().to_representation(instance)
+        if instance.created_at:
+            adjusted_time = localtime(instance.created_at) - timedelta(hours=8)
+            data['created_at'] = adjusted_time.isoformat()  
+        return data
+      
   def validate(self, validated_data):
-    related_fields = ['assignment', 'announcement', 'lecture']
-    related_count = sum(1 for field in related_fields if validated_data.get(field) is not None)
-    if related_count == 0:
-        raise serializers.ValidationError(
-            "A comment must be related to either an assignment, announcement, or lecture."
-        )
-    if related_count > 1:
-        raise serializers.ValidationError(
-            "A comment can only be related to one of assignment, announcement, or lecture."
-        )
-    return validated_data
-  
+      related_fields = ['assignment', 'announcement', 'lecture']
+      related_count = sum(1 for field in related_fields if validated_data.get(field) is not None)
+      if related_count == 0:
+          raise serializers.ValidationError(
+              "A comment must be related to either an assignment, announcement, or lecture."
+          )
+      if related_count > 1:
+          raise serializers.ValidationError(
+              "A comment can only be related to one of assignment, announcement, or lecture."
+          )
+      return validated_data
   def create(self, validated_data):
     return Comment.objects.create(**validated_data)
   def update(self, instance,validated_data):

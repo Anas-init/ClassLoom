@@ -188,19 +188,32 @@ class ClassCardView(APIView):
  
     
 class EnrollmentsView(APIView):
-    renderer_classes=[BaseRenderer]
-    permission_classes=[IsAuthenticated]
-    def post (self, request,format=None ):
-        class_code=request.query_params.get('class_code')
-        if ClassCard.objects.filter(class_code=class_code).exists():
-            serializer=EnrollmentSerializer(data=request.data)
-            if serializer.is_valid(raise_exception= True):
-                serializer.save()
-                return Response({'msg': 'Class joined successfully'},status=status.HTTP_200_OK)
-            else:
-                return Response(serializer.errors,status=status.HTTP_400_BAD_REQUEST)
-        else:
-            return Response({'error':'Class not found'},status=status.HTTP_400_BAD_REQUEST)
+    renderer_classes = [BaseRenderer]
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, format=None):
+        class_code = request.query_params.get('class_code')
+        if not class_code:
+            return Response({'error': 'Class code is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            class_card = ClassCard.objects.get(class_code=class_code)
+        except ClassCard.DoesNotExist:
+            return Response({'error': 'Class not found'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if Enrollment.objects.filter(user=request.user, class_card=class_card).exists():
+            return Response({'msg': 'You are already enrolled in this class'}, status=status.HTTP_400_BAD_REQUEST)
+        data = request.data.copy()
+        data['user'] = request.user.id
+        data['class_card'] = class_card.id
+
+        serializer = EnrollmentSerializer(data=data)
+        if serializer.is_valid(raise_exception=True):
+            serializer.save()
+            return Response({'msg': 'Class joined successfully'}, status=status.HTTP_200_OK)
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
     def get(self, request, format=None):
         class_id = request.query_params.get('class_id')
         if class_id is not None and ClassCard.objects.filter(id=class_id).exists():
@@ -296,8 +309,8 @@ class AnnouncementView(APIView):
             {
                 'id': announcement.id,
                 'description': announcement.description,
-                'created_at': (localtime(announcement.created_at) - timedelta(hours=8)).strftime('%Y-%m-%d %H:%M:%S'),
-                'is_updated': (localtime(announcement.updated_at) - timedelta(hours=8)).strftime('%Y-%m-%d %H:%M:%S') if announcement.updated_at else None,
+                'created_at': (localtime(announcement.created_at)).strftime('%Y-%m-%d %H:%M:%S'),
+                'is_updated': (localtime(announcement.updated_at)).strftime('%Y-%m-%d %H:%M:%S') if announcement.updated_at else None,
                 'is_edited':announcement.is_edited, 
                 'creator': {
                     'name': announcement.creator.name
@@ -386,8 +399,8 @@ class AssignmentView(APIView):
                 'description': assignment.description,
                 'due_date':localtime(assignment.due_date).strftime('%Y-%m-%d %H:%M:%S'),
                 'grade':assignment.grade,
-                'created_at': (localtime(assignment.created_at) - timedelta(hours=8)).strftime('%Y-%m-%d %H:%M:%S'),
-                'is_updated': (localtime(assignment.updated_at) - timedelta(hours=8)).strftime('%Y-%m-%d %H:%M:%S') if assignment.updated_at else None,
+                'created_at': (localtime(assignment.created_at)).strftime('%Y-%m-%d %H:%M:%S'),
+                'is_updated': (localtime(assignment.updated_at)).strftime('%Y-%m-%d %H:%M:%S') if assignment.updated_at else None,
                 'is_edited':assignment.is_edited, 
                 'creator': {
                     'name': assignment.creator.name
@@ -478,8 +491,8 @@ class LectureView(APIView):
                 'id': lecture.id,
                 'title':lecture.title,
                 'description': lecture.description,
-                'created_at': (localtime(lecture.created_at) - timedelta(hours=8)).strftime('%Y-%m-%d %H:%M:%S'),
-                'is_updated': (localtime(lecture.updated_at) - timedelta(hours=8)).strftime('%Y-%m-%d %H:%M:%S') if  lecture.updated_at else None,
+                'created_at': (localtime(lecture.created_at)).strftime('%Y-%m-%d %H:%M:%S'),
+                'is_updated': (localtime(lecture.updated_at)).strftime('%Y-%m-%d %H:%M:%S') if  lecture.updated_at else None,
                 'is_edited':lecture.is_edited, 
                 'creator': {
                     'name': lecture.creator.name
@@ -622,7 +635,7 @@ class AssignmentSubmissionView(APIView):
             data = [
             {
                 'id': submission.id,
-                'submitted_at': (localtime(submission.submitted_at) - timedelta(hours=8)).strftime('%Y-%m-%d %H:%M:%S'),
+                'submitted_at': (localtime(submission.submitted_at) ).strftime('%Y-%m-%d %H:%M:%S'),
                 'attachments': [
                     {
                         'file_name': attachment.file.name,
