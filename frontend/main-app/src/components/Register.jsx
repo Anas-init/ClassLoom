@@ -76,10 +76,12 @@ const Register = () => {
     if (!email || !/\S+@\S+\.\S+/.test(email)) {
       setError('Please enter a valid email address.');
       isValid = false;
-    } else if (password.length < 6) {
-      setError('Password must be at least 6 characters long.');
-      isValid = false;
-    } else if (password !== confirmPassword) {
+    } 
+    // else if (password.length < 6) {
+    //   setError('Password must be at least 6 characters long.');
+    //   isValid = false;
+    // } 
+    else if (password !== confirmPassword) {
       setError("Passwords don't match!");
       isValid = false;
     } else {

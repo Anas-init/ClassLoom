@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import Announcements from './Announcements';
 import Lectures from './Lectures';
@@ -14,6 +14,8 @@ const ClassPage = () => {
     assignments: [],
   });
   const [error, setError] = useState(null);
+  const location = useLocation(); // Access location object  
+  const { className, creatorName } = location.state || {};
 
   useEffect(() => {
     const fetchStream = async () => {
@@ -43,8 +45,9 @@ const ClassPage = () => {
 
   return (
     <div>
-      <h1>Class {class_id} Stream</h1>
-      <Announcements announcements={stream.announcements} refreshStream={() => setStream({ ...stream })} />
+      <h1>Class: {className}</h1>
+      <h3>By: {creatorName}</h3>
+      <Announcements class_id={class_id} announcements={stream.announcements} refreshStream={() => setStream({ ...stream })} />
       <Lectures lectures={stream.lectures} />
       <Assignments assignments={stream.assignments} />
       <Participants class_id={class_id} />

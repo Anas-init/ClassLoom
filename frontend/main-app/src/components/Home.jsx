@@ -215,7 +215,9 @@ const Home = () => {
         </button>
       </Modal>
       {/* Modal for Creating Class */}
-      <Modal
+      {
+        isTeacher && (
+          <Modal
         isOpen={isModalOpen}
         onRequestClose={closeModal}
         contentLabel="Create Class"
@@ -291,7 +293,9 @@ const Home = () => {
           </button>
         </form>
       </Modal>
-
+        )
+      }
+      
       {/* Display Messages */}
       {message && (
         <div

@@ -1,29 +1,68 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
+import { jwtDecode } from 'jwt-decode';
 
 const Participants = ({ class_id }) => {
   const [participants, setParticipants] = useState(null);
   const [error, setError] = useState(null);
+  const [isRemoving, setIsRemoving] = useState(false);
+
+  const accessToken = localStorage.getItem('accessToken');
+  const decodedToken = jwtDecode(accessToken);
+  const isTeacher = decodedToken.role;
+
+  const fetchParticipants = async () => {
+    try {
+      const accessToken = localStorage.getItem('accessToken');
+      const response = await axios.get(
+        `http://127.0.0.1:8000/api/all-students/?class_id=${class_id}`,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        }
+      );
+      setParticipants(response.data);
+    } catch (err) {
+      console.error('Error fetching participants:', err);
+      setError('Failed to load participants.');
+    }
+  };
+
+  const handleRemoveStudent = async (studentId) => {
+    if (!window.confirm('Are you sure you want to remove this student?')) {
+      return; // Abort if the user cancels
+    }
+
+    setIsRemoving(true);
+    try {
+      const accessToken = localStorage.getItem('accessToken');
+      const payload = {
+        ids: [studentId], // Pass the student's ID in an array
+        class_id: class_id,
+      };
+
+      const response = await axios.delete(
+        'http://127.0.0.1:8000/api/remove-students/',
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+          data: payload, // Pass payload in the 'data' property
+        }
+      );    
+
+      // Refresh participants list after successful removal
+      await fetchParticipants();
+    } catch (err) {
+      console.error('Error removing student:', err);
+      alert('Failed to remove the student. Please try again.');
+    } finally {
+      setIsRemoving(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchParticipants = async () => {
-      try {
-        const accessToken = localStorage.getItem('accessToken'); // Replace with your key
-        const response = await axios.get(
-          `http://127.0.0.1:8000/api/all-students/?class_id=${class_id}`,
-          {
-            headers: {
-              Authorization: `Bearer ${accessToken}`,
-            },
-          }
-        );
-        setParticipants(response.data);
-      } catch (err) {
-        console.error('Error fetching participants:', err);
-        setError('Failed to load participants.');
-      }
-    };
-
     fetchParticipants();
   }, [class_id]);
 
@@ -63,7 +102,7 @@ const Participants = ({ class_id }) => {
           <ul style={{ listStyleType: 'none', padding: 0 }}>
             {participants.students.map((student) => (
               <li
-                key={student.id}
+                key={student.student_id}
                 style={{
                   marginBottom: '10px',
                   padding: '10px',
@@ -73,11 +112,27 @@ const Participants = ({ class_id }) => {
                 }}
               >
                 <p>
-                  <strong>Name:</strong> {student.name}
+                  <strong>Name:</strong> {student.student_name}
                 </p>
                 <p>
-                  <strong>Email:</strong> {student.email}
+                  <strong>Email:</strong> {student.student_email}
                 </p>
+                { isTeacher && (<button
+                    onClick={() => handleRemoveStudent(student.student_id)}
+                    disabled={isRemoving}
+                    style={{
+                      marginTop: '10px',
+                      padding: '8px',
+                      backgroundColor: isRemoving ? '#ccc' : '#f44336',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '5px',
+                      cursor: isRemoving ? 'not-allowed' : 'pointer',
+                    }}
+                  >
+                    {isRemoving ? 'Removing...' : 'Remove Student'}
+                  </button>
+                )}
               </li>
             ))}
           </ul>
