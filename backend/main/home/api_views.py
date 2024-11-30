@@ -651,14 +651,13 @@ class CommentListView(APIView):
     permission_classes=[IsAuthenticated,isEnrolled]
     renderer_classes=[BaseRenderer]
     
-    def get(self, request,format=None):
+    def get(self, request, format=None):
         try:
+
             assignment_id = request.query_params.get('assignment_id')
             announcement_id = request.query_params.get('announcement_id')
             lecture_id = request.query_params.get('lecture_id')
-
             comments = Comment.objects.all()
-
             if assignment_id:
                 comments = comments.filter(assignment_id=assignment_id)
             elif announcement_id:
@@ -666,7 +665,7 @@ class CommentListView(APIView):
             elif lecture_id:
                 comments = comments.filter(lecture_id=lecture_id)
             else:
-                return Response({'msg':'No material id provided'}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({'msg': 'No material id provided'}, status=status.HTTP_400_BAD_REQUEST)
             comment_count = comments.aggregate(count=Count('id'))['count']
             serializer = CommentSerializer(comments, many=True)
 

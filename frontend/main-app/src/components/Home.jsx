@@ -114,7 +114,7 @@ const Home = () => {
       <ClassCard classes={classes} />
 
       {/* Join Class Button */}
-      <button
+      {!isTeacher && <button
         onClick={() => setIsModalOpen(true)}
         style={{
           padding: '10px 20px',
@@ -128,6 +128,7 @@ const Home = () => {
       >
         Join Class
       </button>
+      }
       {isTeacher && (
         <button
           onClick={openModal}
@@ -144,7 +145,6 @@ const Home = () => {
         </button>
       )}
 
-      {/* Modal for Joining Class */}
       <Modal
         isOpen={isModalOpen}
         onRequestClose={() => setIsModalOpen(false)}
@@ -214,7 +214,6 @@ const Home = () => {
           Cancel
         </button>
       </Modal>
-      {/* Modal for Creating Class */}
       {
         isTeacher && (
           <Modal
