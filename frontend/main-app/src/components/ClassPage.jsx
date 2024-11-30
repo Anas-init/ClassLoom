@@ -5,6 +5,7 @@ import Announcements from './Announcements';
 import Lectures from './Lectures';
 import Assignments from './Assignments';
 import Participants from './Participants';
+import '../ClassPage.css'; 
 
 const ClassPage = () => {
   const { class_id } = useParams();
@@ -14,8 +15,10 @@ const ClassPage = () => {
     assignments: [],
   });
   const [error, setError] = useState(null);
-  const location = useLocation(); // Access location object  
+  const location = useLocation();
   const { className, creatorName } = location.state || {};
+
+  const [activeTab, setActiveTab] = useState('stream');
 
   useEffect(() => {
     const fetchStream = async () => {
@@ -31,8 +34,8 @@ const ClassPage = () => {
         );
         setStream(response.data);
       } catch (err) {
-        console.error("Error fetching class stream:", err);
-        setError("Failed to load class stream.");
+        console.error('Error fetching class stream:', err);
+        setError('Failed to load class stream.');
       }
     };
 
@@ -40,17 +43,53 @@ const ClassPage = () => {
   }, [class_id]);
 
   if (error) {
-    return <p>{error}</p>;
+    return <p className="error-message">{error}</p>;
   }
 
   return (
-    <div>
-      <h1>Class: {className}</h1>
-      <h3>By: {creatorName}</h3>
-      <Announcements class_id={class_id} announcements={stream.announcements} refreshStream={() => setStream({ ...stream })} />
-      <Lectures lectures={stream.lectures} />
-      <Assignments assignments={stream.assignments} />
-      <Participants class_id={class_id} />
+    <div className="class-page">
+      <header className="class-header">
+        <h1>{className}</h1>
+        <p>By: {creatorName}</p>
+      </header>
+
+      <nav className="class-nav">
+        <button
+          className={`nav-button ${activeTab === 'stream' ? 'active' : ''}`}
+          onClick={() => setActiveTab('stream')}
+        >
+          Stream
+        </button>
+        <button
+          className={`nav-button ${activeTab === 'assignments' ? 'active' : ''}`}
+          onClick={() => setActiveTab('assignments')}
+        >
+          Assigned Tasks
+        </button>
+        <button
+          className={`nav-button ${activeTab === 'people' ? 'active' : ''}`}
+          onClick={() => setActiveTab('people')}
+        >
+          People
+        </button>
+      </nav>
+
+      <main className="class-content">
+        {activeTab === 'stream' && (
+          <>
+            <Announcements
+              class_id={class_id}
+              announcements={stream.announcements}
+              refreshStream={() => setStream({ ...stream })}
+            />
+            <Lectures lectures={stream.lectures} />
+          </>
+        )}
+        {activeTab === 'assignments' && (
+          <Assignments assignments={stream.assignments} />
+        )}
+        {activeTab === 'people' && <Participants class_id={class_id} />}
+      </main>
     </div>
   );
 };

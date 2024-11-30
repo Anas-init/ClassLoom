@@ -33,7 +33,7 @@ export default function ClassCard({ classes }) {
               to={`/class/${classItem.class_id}`}
               state={{
                 className: classItem.class_name,
-                creatorName: classItem.creator,
+                creatorName: classItem.creator_name,
               }}
               sx={{
                 textDecoration: "none",
@@ -44,7 +44,7 @@ export default function ClassCard({ classes }) {
               {classItem.class_name}
             </Typography>
             <Typography variant="body2" sx={{ color: "text.secondary" }}>
-              Created by: {classItem.creator}
+              Created by: {classItem.creator_name}
             </Typography>
           </CardContent>
         </Card>
