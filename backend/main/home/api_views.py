@@ -657,7 +657,7 @@ class CommentListView(APIView):
             announcement_id = request.query_params.get('announcement_id')
             lecture_id = request.query_params.get('lecture_id')
 
-            comments = Comment.objects.all()
+            
 
             if assignment_id:
                 comments = comments.filter(assignment_id=assignment_id)
@@ -667,7 +667,12 @@ class CommentListView(APIView):
                 comments = comments.filter(lecture_id=lecture_id)
             else:
                 return Response({'msg':'No material id provided'}, status=status.HTTP_400_BAD_REQUEST)
+            
+            comments = Comment.objects.all()
             comment_count = comments.aggregate(count=Count('id'))['count']
+            
+            
+            
             serializer = CommentSerializer(comments, many=True)
 
             response_data = {
