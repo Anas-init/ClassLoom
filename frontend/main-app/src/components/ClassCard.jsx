@@ -7,7 +7,12 @@ import { stringToMuiColor } from './stringToMuiColor';
 
 export default function ClassCard({ classes }) {
   return (
-    <div style={{ display: "flex", gap: "16px", flexWrap: "wrap" }}>
+    <div style={{ 
+      display: "flex", 
+      gap: "16px", 
+      flexWrap: "wrap",
+      padding: "20px"
+  }}>
       {classes.map((classItem) => (
         <Card
           key={classItem.class_id}
@@ -15,6 +20,7 @@ export default function ClassCard({ classes }) {
             width: { xs: '100%', sm: 250 },
             height: 200,
             border: "3px solid",
+            borderRadius: "8px",
             borderColor: stringToMuiColor(classItem.class_name),
             display: "flex",
             flexDirection: "column",
@@ -24,6 +30,8 @@ export default function ClassCard({ classes }) {
           <CardContent
             sx={{
               backgroundColor: stringToMuiColor(classItem.class_name),
+              m: 1,
+              borderRadius: "8px"
             }}
           >
             <Typography

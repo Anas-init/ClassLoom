@@ -11,6 +11,10 @@ import ClassPage from './components/ClassPage';
 import AssignmentPage from './components/AssignmentPage';
 import SubmissionPage from './components/SubmissionPage';
 
+import { CssBaseline, ThemeProvider } from '@mui/material';
+import darkTheme from './theme';
+import { dark } from '@mui/material/styles/createPalette';
+
 function PrivateRoute({ session, children }) {
   if (!session) {
     return <Navigate to="/login" />;
@@ -70,49 +74,51 @@ export default function App() {
   }, [authentication]);
 
   return (
-    <Router>
-      <Routes>
-        {/* Public Routes */}
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
+    <ThemeProvider theme={darkTheme}>
+      <Router>
+        <Routes>
+          {/* Public Routes */}
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
 
-        {/* Private Routes */}
-        <Route
-          path="/"
-          element={
-            <PrivateRoute session={session}>
-              <Home />
-            </PrivateRoute>
-          }
-        />
-        <Route
-          path="/class/:class_id"
-          element={
-            <PrivateRoute session={session}>
-              <ClassPage />
-            </PrivateRoute>
-          }
-        />
-        <Route
-          path="/assignment/:assignment_id"
-          element={
-            <PrivateRoute session={session}>
-              <AssignmentPage />
-            </PrivateRoute>
-          }
-        />
-        <Route
-          path="/submission/:submission_id"
-          element={
-            <PrivateRoute session={session}>
-              <SubmissionPage />
-            </PrivateRoute>
-          }
-        />
+          {/* Private Routes */}
+          <Route
+            path="/"
+            element={
+              <PrivateRoute session={session}>
+                <Home />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/class/:class_id"
+            element={
+              <PrivateRoute session={session}>
+                <ClassPage />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/assignment/:assignment_id"
+            element={
+              <PrivateRoute session={session}>
+                <AssignmentPage />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/submission/:submission_id"
+            element={
+              <PrivateRoute session={session}>
+                <SubmissionPage />
+              </PrivateRoute>
+            }
+          />
 
-        {/* Fallback Route */}
-        <Route path="*" element={<Navigate to="/login" />} />
-      </Routes>
-    </Router>
+          {/* Fallback Route */}
+          <Route path="*" element={<Navigate to="/login" />} />
+        </Routes>
+      </Router>
+    </ThemeProvider>
   );
 }
