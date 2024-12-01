@@ -1,14 +1,55 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useLocation } from 'react-router-dom';
 import axios from 'axios';
+
+import {
+  Box,
+  Tabs,
+  Tab,
+  Typography,
+  Paper,
+  Avatar,
+  Divider,
+} from '@mui/material';
+
 import Announcements from './Announcements';
 import Lectures from './Lectures';
 import Assignments from './Assignments';
 import Participants from './Participants';
-import '../ClassPage.css'; 
+import { stringToMuiColor } from './stringToMuiColor';
+
+// A11y TabPanel helper
+function TabPanel({ children, value, index, ...other }) {
+  return (
+    <div
+      role="tabpanel"
+      hidden={value !== index}
+      id={`tabpanel-${index}`}
+      aria-labelledby={`tab-${index}`}
+      {...other}
+    >
+      {value === index && (
+        <Box sx={{ p: 3 }}>
+          <Typography>{children}</Typography>
+        </Box>
+      )}
+    </div>
+  );
+}
+
+function a11yProps(index) {
+  return {
+    id: `tab-${index}`,
+    'aria-controls': `tabpanel-${index}`,
+  };
+}
 
 const ClassPage = () => {
   const { class_id } = useParams();
+  const [value, setValue] = useState(0);
+  const handleChange = (event, newValue) => {
+    setValue(newValue);
+  };
   const [stream, setStream] = useState({
     announcements: [],
     lectures: [],
@@ -16,9 +57,9 @@ const ClassPage = () => {
   });
   const [error, setError] = useState(null);
   const location = useLocation();
-  const { className, creatorName } = location.state || {};
+  const { class_name, creator_name } = location.state || {};
 
-  const [activeTab, setActiveTab] = useState('stream');
+  // const [activeTab, setActiveTab] = useState('stream');
 
   useEffect(() => {
     const fetchStream = async () => {
@@ -47,50 +88,79 @@ const ClassPage = () => {
   }
 
   return (
-    <div className="class-page">
-      <header className="class-header">
-        <h1>{className}</h1>
-        <p>By: {creatorName}</p>
-      </header>
+    <Paper
+      elevation={3}
+      sx={{
+        width: '80%',
+        margin: 'auto',
+        mt: 4,
+        mb: 1,
+        p: 4,
+        bgcolor: 'background.paper',
+        borderRadius: 3,
+        boxShadow: '0px 4px 15px rgba(0, 0, 0, 0.2)',
+      }}
+    >
+      {/* Header */}
+      <Box
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          mb: 3,
+        }}
+      >
+        <Avatar
+          sx={{
+            bgcolor: stringToMuiColor(class_name),
+            color: 'white',
+            width: 56,
+            height: 56,
+            fontSize: '1.5rem',
+            mr: 2,
+          }}
+        >
+          {class_name[0]}
+        </Avatar>
+        <Box>
+          <Typography variant="h4" sx={{ fontWeight: 'bold' }}>
+            {class_name}
+          </Typography>
+          <Typography variant="subtitle1" color="text.secondary">
+            {creator_name}
+          </Typography>
+        </Box>
+      </Box>
+      <Divider sx={{ mb: 2 }} />
 
-      <nav className="class-nav">
-        <button
-          className={`nav-button ${activeTab === 'stream' ? 'active' : ''}`}
-          onClick={() => setActiveTab('stream')}
-        >
-          Stream
-        </button>
-        <button
-          className={`nav-button ${activeTab === 'assignments' ? 'active' : ''}`}
-          onClick={() => setActiveTab('assignments')}
-        >
-          Assigned Tasks
-        </button>
-        <button
-          className={`nav-button ${activeTab === 'people' ? 'active' : ''}`}
-          onClick={() => setActiveTab('people')}
-        >
-          People
-        </button>
-      </nav>
+      {/* Tabs */}
+      <Tabs
+        value={value}
+        onChange={handleChange}
+        textColor="primary"
+        indicatorColor="primary"
+        aria-label="class page tabs"
+        variant="fullWidth"
+      >
+        <Tab label="Announcements" {...a11yProps(0)} />
+        <Tab label="Lectures" {...a11yProps(1)} />
+        <Tab label="Assignments" {...a11yProps(2)} />
+        <Tab label="Participants" {...a11yProps(3)} />
+      </Tabs>
 
-      <main className="class-content">
-        {activeTab === 'stream' && (
-          <>
-            <Announcements
-              class_id={class_id}
-              announcements={stream.announcements}
-              refreshStream={() => setStream({ ...stream })}
-            />
-            <Lectures lectures={stream.lectures} />
-          </>
-        )}
-        {activeTab === 'assignments' && (
-          <Assignments assignments={stream.assignments} />
-        )}
-        {activeTab === 'people' && <Participants class_id={class_id} />}
-      </main>
-    </div>
+      {/* Tab Panels */}
+      <TabPanel value={value} index={0}>
+        <Announcements class_id={class_id} announcements={stream.announcements} />
+      </TabPanel>
+      <TabPanel value={value} index={1}>
+        <Lectures class_id={class_id} lectures={stream.lectures} />
+      </TabPanel>
+      <TabPanel value={value} index={2}>
+        <Assignments class_id={class_id} assignments={stream.assignments} />
+      </TabPanel>
+      <TabPanel value={value} index={3}>
+        <Participants class_id={class_id} />
+      </TabPanel>
+    </Paper>
   );
 };
 

@@ -2,15 +2,32 @@ import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { jwtDecode } from 'jwt-decode';
 
+import {
+  Box,
+  Card,
+  Typography,
+  TextField,
+  Button,
+  IconButton,
+  Tooltip
+} from "@mui/material";
+
+import ChatBubbleOutlineIcon from "@mui/icons-material/ChatBubbleOutline";
+import EditIcon from "@mui/icons-material/Edit";
+import DeleteIcon from "@mui/icons-material/Delete";
+import SendIcon from "@mui/icons-material/Send";
+
 const Comments = ({ itemType, itemId }) => {
   const [comments, setComments] = useState([]);
-  const [newComment, setNewComment] = useState('');
-  const [error, setError] = useState(null);
   const [isCommentsVisible, setIsCommentsVisible] = useState(false);
+  const [newComment, setNewComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState(null);
+  
+  // Set up editing logic
+  const [isEditing, setIsEditing] = useState(false);
   const [editingCommentId, setEditingCommentId] = useState(null);
   const [editingCommentText, setEditingCommentText] = useState('');
-
 
   const getUserIdFromToken = () => {
     try {
@@ -27,9 +44,7 @@ const Comments = ({ itemType, itemId }) => {
   
   var userId = getUserIdFromToken();
 
-  const toggleComments = () => {
-    setIsCommentsVisible((prev) => !prev);
-  };
+  const toggleComments = () => setIsCommentsVisible((prev) => !prev);
 
   const fetchComments = async () => {
     try {
@@ -75,26 +90,23 @@ const Comments = ({ itemType, itemId }) => {
     try {
       setIsSubmitting(true);
   
-      // Decode the token to get user ID
-      userId = getUserIdFromToken(); // Function to decode token and retrieve user_id
+      userId = getUserIdFromToken();
       const accessToken = localStorage.getItem('accessToken');
   
-      // Create payload based on the API spec you provided
       const payload = {
         user: userId,
         description: newComment,
-        [itemType]: itemId, // Dynamically sets "announcement", "lecture", or "assignment"
+        [itemType]: itemId,
       };
   
-      // Send POST request with payload
       await axios.post('http://127.0.0.1:8000/api/create-comment/', payload, {
         headers: {
-          Authorization: `Bearer ${accessToken}`, // Add token in header
+          Authorization: `Bearer ${accessToken}`,
         },
       });
   
-      setNewComment(''); // Clear the input after successful submission
-      fetchComments(); // Refresh comments list
+      setNewComment('');
+      fetchComments();
     } catch (err) {
       console.error('Error adding comment:', err);
       setError('Failed to add comment.');
@@ -174,7 +186,7 @@ const Comments = ({ itemType, itemId }) => {
       console.error("Error editing comment:", err);
       alert("Failed to update comment.");
     }
-  };  
+  };
 
   useEffect(() => {
     if (isCommentsVisible) {
@@ -188,173 +200,128 @@ const Comments = ({ itemType, itemId }) => {
   }
 
   return (
-    <div style={{ marginTop: '10px' }}>
-      <button
-        onClick={toggleComments}
-        style={{
-          padding: '6px 12px',
-          backgroundColor: '#007bff',
-          color: 'white',
-          border: 'none',
-          borderRadius: '4px',
-          cursor: 'pointer',
-        }}
-      >
-        {isCommentsVisible ? 'Hide Comments' : 'View Comments'}
-      </button>
-  
-      {isCommentsVisible && (
-        <div style={{ marginTop: '10px' }}>
-          {comments.length > 0 ? (
-            comments.map((comment) => (
-              <div
-                key={comment.id}
-                style={{
-                  marginBottom: '8px',
-                  padding: '8px',
-                  border: '1px solid #ccc',
-                  borderRadius: '4px',
+    <Box sx={{ px: 2, pt: 1 }}>
+        {/* Show Comments Button */}
+        {comments.count > 1 && (
+          <Button
+            variant="outlined"
+            color="secondary"
+            startIcon={<ChatBubbleOutlineIcon />}
+            onClick={toggleComments}
+            sx={{
+              padding: "4px 12px",
+              fontSize: "0.75rem",
+              textTransform: "none",
+              marginBottom: "8px",
+              borderRadius: "8px",
+              minWidth: "auto",
+            }}
+          >
+            {comments.count} Comments
+          </Button>
+
+        )}
+
+        {isCommentsVisible && comments.count > 0 && (
+          <Box>
+            <Box>
+              {/* Map over comments */}
+              {comments.comments.map((comment) => (
+                <Card
+                  key={comment.id}
+                  sx={{
+                    mb: 2,
+                    borderRadius: "16px",
+                    backgroundColor: "#2A2D3E", // Slightly faded dark background
+                    color: "#FFFFFF",
+                    padding: "10px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                  }}
+                >
+                  {/* Left Section: User Details & Comment */}
+                  <Box sx={{ display: "flex", flexDirection: "column", flexGrow: 1 }}>
+                    <Typography variant="subtitle2" sx={{ color: "#9CA3AF", mb: 1 }}>
+                      <strong>User {comment.user}</strong> | {new Date(comment.created_at).toLocaleString()}
+                    </Typography>
+                    <Typography variant="body1" sx={{ wordBreak: "break-word" }}>
+                      {comment.description}
+                    </Typography>
+                  </Box>
+
+                  {/* Right Section: Action Buttons */}
+                  <Box>
+                    <Tooltip title="Edit Comment">
+                      <IconButton
+                        onClick={() => console.log("Edit comment: " + comment.id + " " + comment.description)}
+                        sx={{ color: "#FFC107" }}
+                      >
+                        <EditIcon />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Delete Comment">
+                      <IconButton
+                        onClick={() => handleDeleteComment(comment.id, comment.user)}
+                        sx={{ color: "#F44336" }}
+                      >
+                        <DeleteIcon />
+                      </IconButton>
+                    </Tooltip>
+                  </Box>
+                </Card>
+              ))}
+            </Box>
+
+            {/* Add Comment Section */}
+            <Box onSubmit={handleAddComment} component="form" display="flex" alignItems="center" gap={1} mt={2}>
+              <TextField
+                value={newComment}
+                onChange={(e) => setNewComment(e.target.value)}
+                placeholder="Write a comment..."
+                variant="outlined"
+                size="small"
+                sx={{
+                  flexGrow: 1,
+                  "& .MuiOutlinedInput-root": {
+                    backgroundColor: "#2A2D3E",
+                    color: "white",
+                    borderRadius: "24px",
+                    paddingLeft: "12px",
+                    "& fieldset": {
+                      borderColor: "rgba(255, 255, 255, 0.3)",
+                    },
+                    "&:hover fieldset": {
+                      borderColor: "rgba(255, 255, 255, 0.5)",
+                    },
+                    "&.Mui-focused fieldset": {
+                      borderColor: "#57A6A1",
+                    },
+                  },
+                }}
+                inputProps={{
+                  style: { color: "white", padding: "8px 0" },
+                }}
+              />
+              <IconButton
+                type="submit"
+                disabled={isSubmitting}
+                color="primary"
+                sx={{
+                  backgroundColor: "#57A6A1",
+                  color: "white",
+                  borderRadius: "50%",
+                  "&:hover": {
+                    backgroundColor: "#43968A",
+                  },
                 }}
               >
-                {editingCommentId === comment.id ? (
-                  // Editing Comment UI
-                  <div>
-                    <textarea
-                      value={editingCommentText}
-                      onChange={(e) => setEditingCommentText(e.target.value)}
-                      rows="2"
-                      style={{
-                        width: '100%',
-                        padding: '8px',
-                        marginBottom: '8px',
-                        border: '1px solid #ccc',
-                        borderRadius: '4px',
-                      }}
-                    ></textarea>
-                    <button
-                      onClick={() =>
-                        handleEditComment(
-                          comment.id,
-                          editingCommentText,
-                          comment.announcement || comment.lecture || comment.assignment,
-                          comment.announcement
-                            ? 'announcement'
-                            : comment.lecture
-                            ? 'lecture'
-                            : 'assignment'
-                        )
-                      }
-                      style={{
-                        padding: '6px 12px',
-                        backgroundColor: '#28a745',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '4px',
-                        marginRight: '8px',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      Save
-                    </button>
-                    <button
-                      onClick={() => setEditingCommentId(null)}
-                      style={{
-                        padding: '6px 12px',
-                        backgroundColor: '#f44336',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '4px',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                ) : (
-                  // Displaying Comment UI
-                  <div>
-                    <p>
-                      <strong>User {comment.user}</strong>: {comment.description}
-                    </p>
-                    <p style={{ fontSize: '12px', color: '#666' }}>
-                      {new Date(comment.created_at).toLocaleString()}
-                    </p>
-                    {getUserIdFromToken() === comment.user && (
-                      <div>
-                        <button
-                          onClick={() => {
-                            setEditingCommentId(comment.id);
-                            setEditingCommentText(comment.description);
-                          }}
-                          style={{
-                            padding: '4px 8px',
-                            backgroundColor: '#ffc107',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '4px',
-                            marginRight: '8px',
-                            cursor: 'pointer',
-                          }}
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => handleDeleteComment(comment.id, comment.user)}
-                          style={{
-                            padding: '4px 8px',
-                            backgroundColor: '#dc3545',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '4px',
-                            cursor: 'pointer',
-                          }}
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            ))
-          ) : (
-            <p>No comments yet.</p>
-          )}
-  
-          {/* Add Comment Form */}
-          <form onSubmit={handleAddComment} style={{ marginTop: '16px' }}>
-            <textarea
-              value={newComment}
-              onChange={(e) => setNewComment(e.target.value)}
-              placeholder="Write your comment..."
-              rows="3"
-              style={{
-                width: '100%',
-                padding: '8px',
-                marginBottom: '8px',
-                border: '1px solid #ccc',
-                borderRadius: '4px',
-              }}
-              required
-            ></textarea>
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              style={{
-                padding: '6px 12px',
-                backgroundColor: isSubmitting ? '#ccc' : '#28a745',
-                color: 'white',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: isSubmitting ? 'not-allowed' : 'pointer',
-              }}
-            >
-              {isSubmitting ? 'Adding...' : 'Add Comment'}
-            </button>
-          </form>
-        </div>
-      )}
-    </div>
+                <SendIcon />
+              </IconButton>
+            </Box>
+          </Box>
+        )}
+      </Box>
   );  
 };
 

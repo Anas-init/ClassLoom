@@ -13,7 +13,6 @@ import SubmissionPage from './components/SubmissionPage';
 
 import { CssBaseline, ThemeProvider } from '@mui/material';
 import darkTheme from './theme';
-import { dark } from '@mui/material/styles/createPalette';
 
 function PrivateRoute({ session, children }) {
   if (!session) {
@@ -75,6 +74,7 @@ export default function App() {
 
   return (
     <ThemeProvider theme={darkTheme}>
+      <CssBaseline />
       <Router>
         <Routes>
           {/* Public Routes */}

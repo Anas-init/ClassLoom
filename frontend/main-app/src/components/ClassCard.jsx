@@ -18,7 +18,6 @@ export default function ClassCard({ classes }) {
           key={classItem.class_id}
           sx={{
             width: { xs: '100%', sm: 250 },
-            height: 200,
             border: "3px solid",
             borderRadius: "8px",
             borderColor: stringToMuiColor(classItem.class_name),
