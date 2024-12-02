@@ -2,6 +2,20 @@ import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import axios from 'axios';
 
+import {
+  Box,
+  Button,
+  Card,
+  Typography,
+  TextField,
+  FormControl,
+  IconButton,
+  InputLabel,
+} from "@mui/material";
+
+import AttachmentIcon from "@mui/icons-material/Attachment";
+import EditIcon from "@mui/icons-material/Edit";
+
 const SubmissionPage = () => {
   const { submission_id } = useParams();
   const [submissionDetails, setSubmissionDetails] = useState(null);
@@ -71,81 +85,157 @@ const SubmissionPage = () => {
 
   useEffect(() => {
     fetchSubmissionDetails();
-  }, [submission_id]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   if (isLoading) return <p>Loading submission details...</p>;
   if (error) return <p>{error}</p>;
 
   return (
-    <div style={{ padding: '20px' }}>
-      <h1>Submission Details</h1>
-      <p>
-        <strong>Submitted At:</strong>{' '}
-        {new Date(submissionDetails.submitted_at).toLocaleString()}
-      </p>
+    <Box
+      sx={{
+        display: "flex",
+        flexDirection: {
+          sm: "column",
+          md: "row"
+        },
+        gap: 3,
+        padding: "20px",
+        maxWidth: "1100px",
+        margin: "0 auto"
+      }}>
+      {/* Left side - Submission details and attachments */}
+      <Card sx={{
+        flex: {
+          sm: "1 1 auto",
+          md: 3
+        },
+        padding: "20px",
+        borderRadius: "16px",
+        color: "white",
+        boxShadow: "0px 4px 8px rgba(0, 0, 0, 0.3)"
+      }}>
+        <Typography variant="h4" sx={{ fontWeight: "bold", mb: 2 }}>Submission Details</Typography>
 
-      {submissionDetails.attachments && submissionDetails.attachments.length > 0 && (
-        <div style={{ marginTop: '20px' }}>
-          <h3>Attachments:</h3>
-          <ul>
-            {submissionDetails.attachments.map((attachment, index) => (
-              <li key={index}>
-                <a
-                  href={attachment.file_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{ textDecoration: 'none', color: '#007bff' }}
-                >
-                  {attachment.file_name.split('/').pop()} {/* Extract just the file name */}
-                </a>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+        <Typography variant="body1">
+          <strong>Submitted At:</strong> {new Date(submissionDetails.submitted_at).toLocaleString()}
+        </Typography>
 
-      {!isGraded && (
-        <div style={{ marginTop: '30px' }}>
-          <h2>Grade This Submission</h2>
-          <form onSubmit={handleGradeSubmission}>
-            <div>
-              <label htmlFor="result_grade">Grade:</label>
-              <input
-                type="number"
-                id="result_grade"
-                name="result_grade"
-                value={resultGrade}
-                onChange={(e) => setResultGrade(e.target.value)}
-                required
-                min="0"
-                max="100"
-              />
-            </div>
-            <div style={{ marginTop: '10px' }}>
-              <label htmlFor="feedback">Feedback:</label>
-              <textarea
-                id="feedback"
-                name="feedback"
-                value={feedback}
-                onChange={(e) => setFeedback(e.target.value)}
-                required
-              />
-            </div>
-            <div style={{ marginTop: '10px' }}>
-              <button type="submit">Submit Grade & Feedback</button>
-            </div>
-          </form>
-        </div>
-      )}
+        {submissionDetails.attachments && submissionDetails.attachments.length > 0 && (
+          <Box sx={{ mt: 2 }}>
+            <Typography variant="h6" sx={{ mb: 1 }}>Attachments:</Typography>
+            {/* Attachments */}
+            {submissionDetails.attachments?.length > 0 && (
+              <Box sx={{ mt: 2 }}>
+                {submissionDetails.attachments.map((attachment, index) => (
+                  <Button
+                    key={index}
+                    variant="outlined"
+                    startIcon={<AttachmentIcon />}
+                    sx={{
+                      mr: 1,
+                      mb: 1,
+                    }}
+                    component="a"
+                    href={attachment.file_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    {attachment.file_name || "View Attachment"}
+                  </Button>
+                ))}
+              </Box>
+            )}
+          </Box>
+        )}
+      </Card>
 
-      {isGraded && (
-        <div style={{ marginTop: '20px' }}>
-          <h3>Graded</h3>
-          <p><strong>Grade:</strong> {resultGrade}</p>
-          <p><strong>Feedback:</strong> {feedback}</p>
-        </div>
-      )}
-    </div>
+      {/* Right side - Grade and Feedback */}
+      <Card
+        sx={{
+          flex: {
+            sm: "1 1 auto",
+            md: 1
+          },
+          padding: "20px",
+          borderRadius: "16px",
+          color: "white",
+          boxShadow: "0px 4px 8px rgba(0, 0, 0, 0.3)",
+          position: "relative"
+        }}
+      >
+        {/* Show edit icon only after grade is already submitted */}
+        {/* Edit button
+                {!isGraded && !isEditing && (
+                    <IconButton
+                        onClick={() => setIsEditing(true)}
+                        sx={{
+                            position: "absolute",
+                            top: 8,
+                            right: 8,
+                            color: "#57A6A1",
+                            backgroundColor: "rgba(0, 0, 0, 0.2)",
+                            "&:hover": { backgroundColor: "rgba(0, 0, 0, 0.3)" },
+                        }}
+                    >
+                        <EditIcon />
+                    </IconButton>
+                )} */}
+
+        <Typography variant="h5" sx={{ fontWeight: "bold", mb: 2 }}>
+          {isGraded ? "Graded" : "Grade This Submission"}
+        </Typography>
+
+        {!isGraded
+          // && !isEditing
+          ? (
+            <>
+              <form onSubmit={handleGradeSubmission}>
+                <FormControl fullWidth sx={{ mb: 2 }}>
+                  <InputLabel htmlFor="result_grade">Grade</InputLabel>
+                  <TextField
+                    type="number"
+                    id="result_grade"
+                    name="result_grade"
+                    value={resultGrade}
+                    onChange={(e) => setResultGrade(e.target.value)}
+                    required
+                    inputProps={{ min: 0, max: 100 }}
+                    variant="outlined"
+                  />
+                </FormControl>
+
+                <FormControl fullWidth sx={{ mb: 2 }}>
+                  <InputLabel htmlFor="feedback">Feedback</InputLabel>
+                  <TextField
+                    id="feedback"
+                    name="feedback"
+                    value={feedback}
+                    onChange={(e) => setFeedback(e.target.value)}
+                    required
+                    multiline
+                    rows={4}
+                    variant="outlined"
+                  />
+                </FormControl>
+
+                <Button variant="contained" type="submit" color="primary" sx={{ mt: 2 }}>
+                  Submit Grade & Feedback
+                </Button>
+              </form>
+            </>
+          ) : (
+            <Box sx={{ mt: 2 }}>
+              <Typography variant="body1">
+                <strong>Grade:</strong> {resultGrade}
+              </Typography>
+              <Typography variant="body1">
+                <strong>Feedback:</strong> {feedback}
+              </Typography>
+            </Box>
+          )}
+      </Card>
+    </Box>
   );
 };
 

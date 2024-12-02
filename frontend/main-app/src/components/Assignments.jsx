@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { jwtDecode } from 'jwt-decode';
 import axios from 'axios';
 
+import { Link } from 'react-router-dom';
 import {
   Card,
   CardContent,
@@ -20,7 +21,7 @@ import {
   Snackbar,
   Alert,
   AlertTitle,
-  Tooltip
+  Tooltip,
 } from "@mui/material";
 
 import AttachmentIcon from "@mui/icons-material/Attachment";
@@ -34,6 +35,7 @@ import Comments from './Comments';
 const Assignments = ({ assignments, class_id }) => {
   const accessToken = localStorage.getItem('accessToken');
   const decodedToken = jwtDecode(accessToken);
+  const isTeacher = decodedToken.role;
   const creator_id = decodedToken.user_id;
 
   const [openAssignmentModal, setOpenAssignmentModal] = useState(false);
@@ -77,12 +79,35 @@ const Assignments = ({ assignments, class_id }) => {
         message: 'Assignment created successfully!',
         severity: 'success',
       });
+      // Modulize fetching annoucements, lectures and assignments
       window.location.href = `/class/` + class_id;
 
     } catch (error) {
       setAssignmentSnackbar({
         open: true,
         message: 'Error Creating Assignment' + error,
+        severity: 'error',
+      });
+    }
+  };
+
+  const handleDeleteAssignment = async (assignmentId) => {
+    try {
+      await axios.delete(
+        `http://127.0.0.1:8000/api/delete-assignment/?assignment_id=${assignmentId}`,
+        {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        }
+      );
+      setAssignmentSnackbar({
+        open: true,
+        message: 'Assignment deleted successfully!',
+        severity: 'success',
+      });
+    } catch (error) {
+      setAssignmentSnackbar({
+        open: true,
+        message: 'Error deleting Assignment: ' + error,
         severity: 'error',
       });
     }
@@ -133,9 +158,24 @@ const Assignments = ({ assignments, class_id }) => {
               }}
             >
               <CardContent sx={{ position: "relative" }}>
-                <Typography variant='h5' sx={{ mt: 1 }}>
+                <Typography
+                  variant="h5"
+                  component={Link}
+                  to={`/assignment/${assignment.id}`}
+                  sx={{
+                    textDecoration: 'none',
+                    color: 'inherit',
+                    fontWeight: 'bold',
+                    cursor: 'pointer',
+                    mt: 1,
+                    '&:hover': {
+                      textDecoration: 'underline',
+                    }
+                  }}
+                >
                   {assignment.title}
                 </Typography>
+
                 <Typography variant='h6' sx={{ mt: 1 }}>
                   {assignment.description}
                 </Typography>
@@ -150,7 +190,10 @@ const Assignments = ({ assignments, class_id }) => {
                           mr: 1,
                           mb: 1,
                         }}
-                        onClick={() => console.log("file open")}
+                        component="a"
+                        href={attachment.file_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
                       >
                         {attachment.file_name || "View Attachment"}
                       </Button>
@@ -165,32 +208,32 @@ const Assignments = ({ assignments, class_id }) => {
                 itemId={assignment.id}
               />
 
-              <CardActions sx={{ justifyContent: "space-between" }}>
-                <Stack direction="row" spacing={1}>
-                  <IconButton
-                    color="inherit"
-                    onClick={() => console.log("Edit assignment")}
-                    sx={{
-                      color: "#57A6A1",
-                      "&:hover": { bgcolor: "rgba(87, 166, 161, 0.1)" },
-                    }}
-                  >
-                    <EditIcon />
-                  </IconButton>
-                  <IconButton
-                    color="inherit"
-                    onClick={() =>
-                      console.log("Delete assignment: " + assignment.id)
-                    }
-                    sx={{
-                      color: "#ff5252",
-                      "&:hover": { bgcolor: "rgba(255, 82, 82, 0.1)" },
-                    }}
-                  >
-                    <DeleteIcon />
-                  </IconButton>
-                </Stack>
-              </CardActions>
+              {isTeacher && (
+                <CardActions sx={{ justifyContent: "space-between" }}>
+                  <Stack direction="row" spacing={1}>
+                    <IconButton
+                      color="inherit"
+                      onClick={() => console.log("Edit assignment")}
+                      sx={{
+                        color: "#57A6A1",
+                        "&:hover": { bgcolor: "rgba(87, 166, 161, 0.1)" },
+                      }}
+                    >
+                      <EditIcon />
+                    </IconButton>
+                    <IconButton
+                      color="inherit"
+                      onClick={() => handleDeleteAssignment(assignment.id)}
+                      sx={{
+                        color: "#ff5252",
+                        "&:hover": { bgcolor: "rgba(255, 82, 82, 0.1)" },
+                      }}
+                    >
+                      <DeleteIcon />
+                    </IconButton>
+                  </Stack>
+                </CardActions>
+              )}
             </Card>
           ))}
         </Stack>

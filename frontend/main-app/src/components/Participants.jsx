@@ -159,7 +159,7 @@ const Participants = ({ class_id }) => {
                 "&:hover": { bgcolor: "#459d8d" },
               }}
               onClick={() =>
-                console.log("Email class creator: " + participants.creator.creator_email)
+                window.location.href = `mailto:${participants.creator.creator_email}`
               }
             >
               <EmailIcon />
@@ -197,7 +197,7 @@ const Participants = ({ class_id }) => {
                         "&:hover": { bgcolor: "#459d8d" },
                       }}
                       onClick={() =>
-                        console.log("Email student: " + student.student_id)
+                        window.location.href = `mailto:${student.student_email}`
                       }
                     >
                       <EmailIcon />

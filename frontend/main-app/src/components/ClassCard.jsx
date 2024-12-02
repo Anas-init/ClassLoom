@@ -39,8 +39,9 @@ export default function ClassCard({ classes }) {
               component={Link}
               to={`/class/${classItem.class_id}`}
               state={{
-                className: classItem.class_name,
-                creatorName: classItem.creator_name,
+                class_name: classItem.class_name,
+                creator_name: classItem.creator_name,
+                class_color: stringToMuiColor(classItem.class_name),
               }}
               sx={{
                 textDecoration: "none",

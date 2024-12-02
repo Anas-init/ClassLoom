@@ -1,4 +1,6 @@
 import React, { useState } from "react";
+import { jwtDecode } from "jwt-decode";
+import axios from "axios";
 import {
   Card,
   CardContent,
@@ -29,30 +31,37 @@ import AttachFileIcon from '@mui/icons-material/AttachFile';
 import Comments from "./Comments";
 
 const Lectures = ({ lectures, class_id }) => {
+  const accessToken = localStorage.getItem('accessToken');
+  const decodedToken = jwtDecode(accessToken);
+  const isTeacher = decodedToken.role;
+  const userId = decodedToken.user_id;
+
   const [openLectureModal, setOpenLectureModal] = useState(false);
   const [lectureTitle, setLectureTitle] = useState("");
   const [lectureDescription, setLectureDescription] = useState("");
   const [lectureSnackbar, setLectureSnackbar] = useState({ open: false, message: '', severity: '' });
+  const [lectureAttachments, setLectureAttachments] = useState([]);
 
   const toggleLectureModal = () => setOpenLectureModal(!openLectureModal);
 
-  const handleCreateLecture = () => {
+  const handleCreateLecture = async () => {
     try {
-
-      // API Call here
-      // const formData = new FormData();
-      // formData.append('description', announcementDescription);
-      // formData.append('class_card', class_id);
-      // formData.append('creator', userId);
-      // if (announcementAttachments) formData.append('attachments', announcementAttachments);
-
-      // await axios.post('http://127.0.0.1:8000/api/create-announcement/', formData, {
-      //   headers: {
-      //     Authorization: `Bearer ${accessToken}`,
-      //     'Content-Type': 'multipart/form-data',
-      //   },
-      // });
-
+      const formData = new FormData();
+      formData.append('title', lectureTitle);
+      formData.append('description', lectureDescription);
+      formData.append('class_card', class_id);
+      formData.append('creator', userId);
+      if (lectureAttachments) {
+        lectureAttachments.forEach((file, index) => {
+          formData.append(`attachments`, file);
+        });
+      }
+      await axios.post('http://127.0.0.1:8000/api/create-lecture/', formData, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'multipart/form-data',
+        },
+      });
       setOpenLectureModal(false);
       setLectureSnackbar({
         open: true,
@@ -60,6 +69,7 @@ const Lectures = ({ lectures, class_id }) => {
         severity: 'success',
       });
     } catch (error) {
+      console.log(error);
       setLectureSnackbar({
         open: true,
         message: 'Error Creating Lecture: ' + error,
@@ -68,11 +78,37 @@ const Lectures = ({ lectures, class_id }) => {
     }
   };
 
-  const [lectureAttachments, setLectureAttachments] = useState([]);
+  // const handleDeleteLecture;
+
+  // const handleRetrieveLecture = async () => {
+
+  // };
+
+  const handleDeleteLecture = async (lectureId) => {
+    try {
+      await axios.delete(
+        `http://127.0.0.1:8000/api/delete-lecture/?lecture_id=${lectureId}`,
+        {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        }
+      );
+      setLectureSnackbar({
+        open: true,
+        message: 'Lecture deleted successfully!',
+        severity: 'success',
+      });
+    } catch (error) {
+      setLectureSnackbar({
+        open: true,
+        message: 'Error deleting Lecture: ' + error,
+        severity: 'error',
+      });
+    }
+  };
 
   const handleLectureFileChange = (e) => {
-    const files = e.target.files;
-    setLectureAttachments([...lectureAttachments, ...Array.from(files)]);
+    const files = Array.from(e.target.files); // Ensure it's an array
+    setLectureAttachments((prev) => [...prev, ...files]);
   };
 
   const handleRemoveLectureAttachment = (index) => {
@@ -170,7 +206,10 @@ const Lectures = ({ lectures, class_id }) => {
                           mr: 1,
                           mb: 1,
                         }}
-                        onClick={() => console.log("file open")}
+                        component="a"
+                        href={attachment.file_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
                       >
                         {attachment.file_name || "View Attachment"}
                       </Button>
@@ -185,32 +224,34 @@ const Lectures = ({ lectures, class_id }) => {
                 itemId={lecture.id}
               />
 
-              <CardActions sx={{ justifyContent: "space-between" }}>
-                <Stack direction="row" spacing={1}>
-                  <IconButton
-                    color="inherit"
-                    onClick={() => console.log("Edit lecture")}
-                    sx={{
-                      color: "#57A6A1",
-                      "&:hover": { bgcolor: "rgba(87, 166, 161, 0.1)" },
-                    }}
-                  >
-                    <EditIcon />
-                  </IconButton>
-                  <IconButton
-                    color="inherit"
-                    onClick={() =>
-                      console.log("Delete lecture: " + lecture.id)
-                    }
-                    sx={{
-                      color: "#ff5252",
-                      "&:hover": { bgcolor: "rgba(255, 82, 82, 0.1)" },
-                    }}
-                  >
-                    <DeleteIcon />
-                  </IconButton>
-                </Stack>
-              </CardActions>
+              {isTeacher && (
+                <CardActions sx={{ justifyContent: "space-between" }}>
+                  <Stack direction="row" spacing={1}>
+                    <IconButton
+                      color="inherit"
+                      onClick={() => console.log("Edit lecture")}
+                      sx={{
+                        color: "#57A6A1",
+                        "&:hover": { bgcolor: "rgba(87, 166, 161, 0.1)" },
+                      }}
+                    >
+                      <EditIcon />
+                    </IconButton>
+                    <IconButton
+                      color="inherit"
+                      onClick={() =>
+                        handleDeleteLecture(lecture.id)
+                      }
+                      sx={{
+                        color: "#ff5252",
+                        "&:hover": { bgcolor: "rgba(255, 82, 82, 0.1)" },
+                      }}
+                    >
+                      <DeleteIcon />
+                    </IconButton>
+                  </Stack>
+                </CardActions>
+              )}
             </Card>
           ))}
         </Stack>
@@ -299,6 +340,7 @@ const Lectures = ({ lectures, class_id }) => {
           </Button>
         </DialogActions>
       </Dialog>
+
       {/* Snackbar for Notifications */}
       <Snackbar
         open={lectureSnackbar.open}

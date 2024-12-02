@@ -11,9 +11,6 @@ import ClassPage from './components/ClassPage';
 import AssignmentPage from './components/AssignmentPage';
 import SubmissionPage from './components/SubmissionPage';
 
-import { CssBaseline, ThemeProvider } from '@mui/material';
-import darkTheme from './theme';
-
 function PrivateRoute({ session, children }) {
   if (!session) {
     return <Navigate to="/login" />;
@@ -73,8 +70,6 @@ export default function App() {
   }, [authentication]);
 
   return (
-    <ThemeProvider theme={darkTheme}>
-      <CssBaseline />
       <Router>
         <Routes>
           {/* Public Routes */}
@@ -119,6 +114,5 @@ export default function App() {
           <Route path="*" element={<Navigate to="/login" />} />
         </Routes>
       </Router>
-    </ThemeProvider>
   );
 }

@@ -34,21 +34,21 @@ import Comments from './Comments';
 const Announcements = ({ announcements, class_id }) => {
   const accessToken = localStorage.getItem('accessToken');
   const decodedToken = jwtDecode(accessToken);
-  const isTeacher = decodedToken.role === 'teacher';
+  const isTeacher = decodedToken.role;
   const userId = decodedToken.user_id;
 
   // NEW
   const [openAnnouncementModal, setOpenAnnouncementModal] = useState(false);
-  const [announcementTitle, setAnnouncementTitle] = useState("");
   const [announcementDescription, setAnnouncementDescription] = useState("");
   const [announcementSnackbar, setAnnouncementSnackbar] = useState({ open: false, message: '', severity: '' });
   const toggleAnnoucementModal = () => setOpenAnnouncementModal(!openAnnouncementModal);
   const [announcementAttachments, setAnnouncementAttachments] = useState([]);
 
   const handleAnnouncementFileChange = (e) => {
-    const files = e.target.files;
-    setAnnouncementAttachments([...announcementAttachments, ...Array.from(files)]);
+    const files = Array.from(e.target.files); // Ensure it's an array
+    setAnnouncementAttachments((prev) => [...prev, ...files]);
   };
+
 
   const handleRemoveAnnoucementAttachment = (index) => {
     const newAttachments = announcementAttachments.filter((_, i) => i !== index);
@@ -87,7 +87,11 @@ const Announcements = ({ announcements, class_id }) => {
       formData.append('description', announcementDescription);
       formData.append('class_card', class_id);
       formData.append('creator', userId);
-      if (announcementAttachments) formData.append('attachments', announcementAttachments);
+      if (announcementAttachments) {
+        announcementAttachments.forEach((file, index) => {
+          formData.append(`attachments`, file);
+        });
+      }
 
       await axios.post('http://127.0.0.1:8000/api/create-announcement/', formData, {
         headers: {
@@ -107,7 +111,7 @@ const Announcements = ({ announcements, class_id }) => {
       // handle inputs
       setAnnouncementSnackbar({
         open: true,
-        message: 'Error Creating Annoucement: ' + {error},
+        message: 'Error Creating Annoucement: ' + { error },
         severity: 'error',
       });
     }
@@ -121,9 +125,18 @@ const Announcements = ({ announcements, class_id }) => {
           headers: { Authorization: `Bearer ${accessToken}` },
         }
       );
+      setAnnouncementSnackbar({
+        open: true,
+        message: 'Annoucement deleted successfully!',
+        severity: 'success',
+      });
       // fetchAnnouncements(); // Refresh announcements after delete
     } catch (error) {
-      console.error('Error deleting announcement:', error);
+      setAnnouncementSnackbar({
+        open: true,
+        message: 'Error deleting Annoucement: ' + error,
+        severity: 'error',
+      });
     }
   };
 
@@ -213,7 +226,10 @@ const Announcements = ({ announcements, class_id }) => {
                           mr: 1,
                           mb: 1,
                         }}
-                        onClick={() => console.log("file open")}
+                        component="a"
+                        href={attachment.file_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
                       >
                         {attachment.file_name || "View Attachment"}
                       </Button>
@@ -276,14 +292,6 @@ const Announcements = ({ announcements, class_id }) => {
         <DialogTitle>Create New Announcement</DialogTitle>
 
         <DialogContent>
-          <TextField
-            label="Title"
-            value={announcementTitle}
-            onChange={(e) => setAnnouncementTitle(e.target.value)}
-            fullWidth
-            sx={{ mb: 2 }}
-            variant="outlined"
-          />
           <TextField
             label="Description"
             value={announcementDescription}
