@@ -83,6 +83,7 @@ const Assignments = ({ assignments, class_id }) => {
       window.location.href = `/class/` + class_id;
 
     } catch (error) {
+      console.log(error);
       setAssignmentSnackbar({
         open: true,
         message: 'Error Creating Assignment' + error,

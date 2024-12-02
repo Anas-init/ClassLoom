@@ -36,7 +36,6 @@ const SubmissionPage = () => {
           },
         }
       );
-      console.log(response.data);
       const submissionData = response.data.Submission[0];
       setSubmissionDetails(submissionData);
     } catch (err) {
@@ -60,7 +59,7 @@ const SubmissionPage = () => {
       const response = await axios.post(
         `http://127.0.0.1:8000/api/check-assignment/?submission_id=${submission_id}`,
         {
-          assignmentsubmission: submission_id, // Submission ID
+          assignmentsubmission: submission_id,
           result_grade: resultGrade,
           feedback: feedback,
         },
@@ -71,7 +70,9 @@ const SubmissionPage = () => {
         }
       );
 
-      if (response.data.success) {
+      console.log(response.data);
+
+      if (response.data) {
         alert('Assignment graded successfully!');
         setIsGraded(true);
       } else {
