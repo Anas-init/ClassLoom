@@ -299,7 +299,7 @@ class AnnouncementView(APIView):
                 for file in attachments:
                     Attachment.objects.create(file=file, announcement=announcement)
             
-            self.send_emails_to_students(announcement)
+            #self.send_emails_to_students(announcement)
             
             return Response({'msg': 'Announcement created successfully'}, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -421,7 +421,7 @@ class AssignmentView(APIView):
             if attachments:
                 for file in attachments:
                     Attachment.objects.create(file=file, assignment=assignment)
-            self.send_emails_to_students(assignment)
+            #self.send_emails_to_students(assignment)
             return Response({'msg': 'Assignment created successfully'}, status=status.HTTP_200_OK)
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -542,7 +542,7 @@ class LectureView(APIView):
             if lecture:
                 for file in attachments:
                     Attachment.objects.create(file=file,lecture=lecture)
-                self.send_emails_to_students(lecture)
+                #self.send_emails_to_students(lecture)
             return Response({'msg':'Lecture created successfully'}, status=status.HTTP_200_OK)
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
