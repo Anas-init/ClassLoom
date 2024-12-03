@@ -37,7 +37,36 @@ const generateClassCode = () => {
 };
 
 const Navbar = () => {
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [accessToken, setAccessToken] = useState('');
+  const [isTeacher, setIsTeacher] = useState(false);
+
+  const [joinOpen, setJoinOpen] = useState(false);
+  const [className, setClassName] = useState('');
+  const [classCode, setClassCode] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: '' });
+
+  const [createOpen, setCreateOpen] = useState(false);
+
   const [anchorEl, setAnchorEl] = React.useState(null);
+
+
+  useEffect(() => {
+    try {
+      const aToken = localStorage.getItem('accessToken');
+      if (aToken) {
+        const dToken = jwtDecode(aToken);
+        setIsLoggedIn(true);
+        setAccessToken(aToken);
+        setIsTeacher(dToken.role);
+      }
+    } catch (error) {
+      console.log(error);
+      setIsLoggedIn(false);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleMenuOpen = (event) => {
     setAnchorEl(event.currentTarget);
@@ -46,28 +75,6 @@ const Navbar = () => {
   const handleMenuClose = () => {
     setAnchorEl(null);
   };
-
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [accessToken, setAccessToken] = useState('');
-  const [decodedToken, setDecodedToken] = useState('');
-  const [isTeacher, setIsTeacher] = useState(false);
-
-  useEffect(() => {
-    try {
-      const aToken = localStorage.getItem('accessToken');
-      const dToken = jwtDecode(aToken);
-      if (dToken) {
-        setIsLoggedIn(true);
-        setAccessToken(aToken);
-        setDecodedToken(dToken);
-        setIsTeacher(decodedToken.role);
-      }
-    } catch (error) {
-      console.log(error);
-      setIsLoggedIn(false);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   const handleLogout = () => {
     localStorage.removeItem('accessToken');
@@ -79,27 +86,21 @@ const Navbar = () => {
     window.location.href = '/login';
   };
 
-  const [className, setClassName] = useState('');
-  const [classCode, setClassCode] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: '' });
-
-  const [createOpen, setCreateOpen] = useState(false);
   const handleCreateOpen = () => {
     setCreateOpen(true);
     setClassCode(generateClassCode());
   };
+
   const handleCreateClose = () => {
     setCreateOpen(false);
     setClassName('');
     setClassCode('');
     setLoading(false);
   };
+  
   const handleCreate = async () => {
     setLoading(true);
     try {
-      // API call here
-      // await new Promise((resolve) => setTimeout(resolve, 2000)); // Simulated delay
       await axios.post(
         'http://127.0.0.1:8000/api/create-class/',
         {
@@ -118,7 +119,7 @@ const Navbar = () => {
         message: 'Class created successfully!',
         severity: 'success',
       });
-      // Refresh page here
+      window.location.refresh();
     } catch (error) {
       setSnackbar({
         open: true,
@@ -131,7 +132,6 @@ const Navbar = () => {
     }
   };
 
-  const [joinOpen, setJoinOpen] = useState(false);
   const handleJoinOpen = () => setJoinOpen(true);
   const handleJoinClose = () => {
     setJoinOpen(false);
@@ -159,6 +159,7 @@ const Navbar = () => {
       });
       window.location.refresh();
     } catch (error) {
+      console.log(error);
       setSnackbar({
         open: true,
         message: 'Failed to join the class. Please try again.',
@@ -205,11 +206,6 @@ const Navbar = () => {
 
           {isLoggedIn ? (
             <>
-              <Button color="inherit"
-                onClick={handleLogout}
-              >
-                Logout
-              </Button>
               <IconButton
                 size="large"
                 aria-label="account of current user"

@@ -10,13 +10,16 @@ import {
   Paper,
   Avatar,
   Divider,
+  Snackbar,
+  Alert,
+  AlertTitle,
+  LinearProgress
 } from '@mui/material';
 
 import Announcements from './Announcements';
 import Lectures from './Lectures';
 import Assignments from './Assignments';
 import Participants from './Participants';
-import { stringToMuiColor } from './stringToMuiColor';
 
 // A11y TabPanel helper
 function TabPanel({ children, value, index, ...other }) {
@@ -45,6 +48,8 @@ function a11yProps(index) {
 }
 
 const ClassPage = () => {
+  const [classPageSnackbar, setClassPageSnackbar] = useState({ open: false, message: '', severity: '' });
+  const [isLoading, setIsLoading] = useState(false);
   const { class_id } = useParams();
   const [value, setValue] = useState(0);
   const handleChange = (event, newValue) => {
@@ -57,14 +62,14 @@ const ClassPage = () => {
   });
   const [error, setError] = useState(null);
   const location = useLocation();
-  const { class_name, creator_name } = location.state || {};
-
+  const { class_name, creator_name, class_color } = location.state || {};
   // const [activeTab, setActiveTab] = useState('stream');
 
   useEffect(() => {
     const fetchStream = async () => {
       try {
         const accessToken = localStorage.getItem('accessToken');
+        setIsLoading(true);
         const response = await axios.get(
           `http://127.0.0.1:8000/api/class-stream/?class_id=${class_id}`,
           {
@@ -74,14 +79,26 @@ const ClassPage = () => {
           }
         );
         setStream(response.data);
+        setIsLoading(false);
+        console.log(response.data);
       } catch (err) {
-        console.error('Error fetching class stream:', err);
+        setIsLoading(false);
+        setClassPageSnackbar({
+          open: true,
+          message: 'Error Loading Class Content: ' + { error },
+          severity: 'error',
+        });
         setError('Failed to load class stream.');
       }
     };
 
     fetchStream();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [class_id]);
+
+  const handleAnnouncementSnackbarClose = () => {
+    setClassPageSnackbar((prev) => ({ ...prev, open: false }));
+  };
 
   if (error) {
     return <p className="error-message">{error}</p>;
@@ -111,7 +128,7 @@ const ClassPage = () => {
       >
         <Avatar
           sx={{
-            bgcolor: stringToMuiColor(class_name),
+            bgcolor: class_color,
             color: 'white',
             width: 56,
             height: 56,
@@ -132,34 +149,64 @@ const ClassPage = () => {
       </Box>
       <Divider sx={{ mb: 2 }} />
 
-      {/* Tabs */}
-      <Tabs
-        value={value}
-        onChange={handleChange}
-        textColor="primary"
-        indicatorColor="primary"
-        aria-label="class page tabs"
-        variant="fullWidth"
-      >
-        <Tab label="Announcements" {...a11yProps(0)} />
-        <Tab label="Lectures" {...a11yProps(1)} />
-        <Tab label="Assignments" {...a11yProps(2)} />
-        <Tab label="Participants" {...a11yProps(3)} />
-      </Tabs>
+      {isLoading ? (
+        <LinearProgress />
+      ) : (
+        <>
+          {/* Tabs */}
+          <Tabs
+            value={value}
+            onChange={handleChange}
+            textColor="primary"
+            indicatorColor="primary"
+            aria-label="class page tabs"
+            variant="fullWidth"
+          >
+            <Tab label="Announcements" {...a11yProps(0)} />
+            <Tab label="Lectures" {...a11yProps(1)} />
+            <Tab label="Assignments" {...a11yProps(2)} />
+            <Tab label="Participants" {...a11yProps(3)} />
+          </Tabs>
 
-      {/* Tab Panels */}
-      <TabPanel value={value} index={0}>
-        <Announcements class_id={class_id} announcements={stream.announcements} />
-      </TabPanel>
-      <TabPanel value={value} index={1}>
-        <Lectures class_id={class_id} lectures={stream.lectures} />
-      </TabPanel>
-      <TabPanel value={value} index={2}>
-        <Assignments class_id={class_id} assignments={stream.assignments} />
-      </TabPanel>
-      <TabPanel value={value} index={3}>
-        <Participants class_id={class_id} />
-      </TabPanel>
+          {/* Tab Panels */}
+          <TabPanel value={value} index={0}>
+            <Announcements class_id={class_id} announcements={stream.announcements} />
+          </TabPanel>
+          <TabPanel value={value} index={1}>
+            <Lectures class_id={class_id} lectures={stream.lectures} />
+          </TabPanel>
+          <TabPanel value={value} index={2}>
+            <Assignments class_id={class_id} assignments={stream.assignments} />
+          </TabPanel>
+          <TabPanel value={value} index={3}>
+            <Participants class_id={class_id} />
+          </TabPanel>
+        </>
+      )}
+
+      {/* Snackbar for Notifications */}
+      <Snackbar
+        open={classPageSnackbar.open}
+        autoHideDuration={3000}
+        onClose={handleAnnouncementSnackbarClose}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+      >
+        <Alert
+          onClose={handleAnnouncementSnackbarClose}
+          variant='filled'
+          severity={classPageSnackbar.severity}
+          sx={{
+            width: '100%',
+            color: '#ffffff'
+          }}
+        >
+          <AlertTitle>
+            {classPageSnackbar.severity === 'success' && 'Success'}
+            {classPageSnackbar.severity === 'error' && 'Error'}
+          </AlertTitle>
+          {classPageSnackbar.message}
+        </Alert>
+      </Snackbar>
     </Paper>
   );
 };
