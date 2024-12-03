@@ -25,17 +25,16 @@ const AssignmentPage = () => {
   const [error, setError] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedFile, setSelectedFile] = useState(null);
+
   // Replace with snackbar functionality
-  const [submissionSuccess, setSubmissionSuccess] = useState(false);
   const [canSubmit, setCanSubmit] = useState(true);
-  const [result, setResult] = useState(null); // To store result data
-  const [resultLoading, setResultLoading] = useState(false); // To show loading while fetching result
-  const [resultError, setResultError] = useState(null); // To handle result fetching errors
+  const [isGraded, setIsGraded] = useState(true);
+  const [result, setResult] = useState(null);
 
   const accessToken = localStorage.getItem('accessToken');
   const decodedToken = jwtDecode(accessToken);
   const isTeacher = decodedToken.role;
-  const studentId = decodedToken.user_id; // Assuming the token contains the student's ID
+  const studentId = decodedToken.user_id;
 
   const fetchAssignmentDetails = async () => {
     try {
@@ -132,7 +131,6 @@ const AssignmentPage = () => {
       );
 
       if (response.data) {
-        setSubmissionSuccess(true);
         alert('Submission successful!');
       } else {
         setError('Failed to submit the assignment.');
@@ -144,9 +142,6 @@ const AssignmentPage = () => {
   };
 
   const fetchResult = async () => {
-    setResultLoading(true);
-    setResultError(null);
-
     try {
       const response = await axios.get(
         `http://127.0.0.1:8000/api/get-result/?assignment_id=${assignment_id}`,
@@ -157,16 +152,16 @@ const AssignmentPage = () => {
         }
       );
 
-      if (response.data) {
-        setResult(response.data); // Store the result data
+      console.log(response.data);
+
+      setIsGraded(response.data.flag)
+      if (response.data.flag) {
+        setResult(response.data.data);
       } else {
-        setResultError('Your submission is not graded yet.');
+        console.log("oopsie")
       }
     } catch (err) {
       console.error('Error fetching result:', err);
-      setResultError('Error fetching result. Please try again later.');
-    } finally {
-      setResultLoading(false); // Hide loading state
     }
   };
 
@@ -448,7 +443,7 @@ const AssignmentPage = () => {
           {result && (
             <Box sx={{ marginTop: 2 }}>
               <Typography variant="body1">
-                <strong>Grade:</strong> {result.grade}
+                <strong>Grade:</strong> {result.result_grade}
               </Typography>
               <Typography variant="body1">
                 <strong>Feedback:</strong> {result.feedback || "No feedback available."}
