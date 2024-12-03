@@ -941,7 +941,7 @@ class TodoView(APIView):
     renderer_classes = [BaseRenderer]
     permission_classes = [IsAuthenticated, isEnrolled]
 
-    def get(self, request, format=None):
+    def post(self, request, format=None):
         p_class_id = request.data.get('class_id')
         p_student_id = request.data.get('student_id')
 
