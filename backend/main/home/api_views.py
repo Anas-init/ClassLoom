@@ -1,4 +1,6 @@
 from django.shortcuts import render , HttpResponse
+from rest_framework.exceptions import NotFound
+
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.views import APIView
@@ -795,14 +797,30 @@ class AssignmentSubmissionView(APIView):
 class AssignmentCheckingView(APIView):
     renderer_classes=[BaseRenderer]
     permission_classes=[IsAuthenticated,isEnrolled]
-    def get(self,request,format=None):
-        sub_id=request.query_params.get('assignment_id')
+   
+    def get(self, request, format=None):
         try:
-            query=AssignmentResult.objects.get(assignmentsubmission=sub_id)
-            serializer=AssignmentResultSerializer(query)
-            return Response(serializer.data,status=status.HTTP_200_OK)
+            # Get assignment ID from query parameters
+            assi_id = request.query_params.get('assignment_id')
+            if not assi_id:
+                return Response({"error": "assignment_id is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Fetch the AssignmentSubmission object
+            query = AssignmentSubmission.objects.get(assignment_id=assi_id, student=request.user)
+
+            # Fetch the AssignmentResult object
+            temp_query = AssignmentResult.objects.get(assignmentsubmission=query.id)
+
+            # Serialize and return the result
+            serializer = AssignmentResultSerializer(temp_query)
+            return Response({'flag':True,'data':serializer.data}, status=status.HTTP_200_OK)
+        except AssignmentSubmission.DoesNotExist:
+            raise NotFound("Assignment submission not found for the given assignment_id and user.")
         except AssignmentResult.DoesNotExist:
-            return Response({'error':'No result for that submission id exist'},status=status.HTTP_400_BAD_REQUEST)
+            return Response ({'flag':False,'data':{}},status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
     def post(self,request,format=None):
         serializer=AssignmentResultSerializer(data=request.data)
         if serializer.is_valid(raise_exception=True):
